@@ -6,7 +6,7 @@ export default function Logo() {
       <img 
         src="/Logo.svg" 
         alt="Grand Line Logo" 
-        className="w-48 sm:w-64 h-auto object-contain drop-shadow-md"
+        className="w-48 h-auto object-contain drop-shadow-md"
       />
     </Link>
   );

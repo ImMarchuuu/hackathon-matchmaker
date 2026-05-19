@@ -19,7 +19,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="w-full max-w-md">{children}</div>
 
       {/* Copyright */}
-      <p className="mt-8 text-xs" style={{ color: 'var(--color-muted)' }}>2025 GrandLine. All right reserved.</p>
+      <p className="mt-8 text-xs" style={{ color: '#fff' }}>2025 GrandLine. All right reserved.</p>
     </div>
   );
 }

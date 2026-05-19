@@ -3,12 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { SignupPayload } from "@/types/auth";
 
 /**
  * Sign Up page — GRAND LINE theme.
  * Form fields: display name, email, password, confirm password.
- * TODO: Connect to auth API endpoint for actual registration.
  */
 export default function SignupPage() {
   const [displayName, setDisplayName] = useState("");
@@ -24,9 +22,8 @@ export default function SignupPage() {
       alert("Passwords do not match");
       return;
     }
-    // Mock Auth logic
-    document.cookie = "grandline_auth=u1; path=/; max-age=86400";
-    router.push("/find-team");
+    // Redirect to /otp instead of setting cookie and redirecting to /find-team
+    router.push("/otp");
   };
 
   return (

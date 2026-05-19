@@ -143,6 +143,15 @@ export default function SettingsPage() {
               </div>
               <Toggle initialState={false} />
             </div>
+
+            {/* Row 3 (2FA) */}
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-gray-800 font-bold text-sm">ระบบยืนยันตัว 2 ชั้น (2FA)</p>
+                <p className="text-gray-500 text-xs mt-0.5">เพิ่มความปลอดภัยด้วยการยืนยันตัวตนผ่านอีเมลเมื่อเข้าสู่ระบบ</p>
+              </div>
+              <Toggle initialState={false} />
+            </div>
           </div>
         </div>
 
