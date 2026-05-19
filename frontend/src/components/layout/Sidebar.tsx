@@ -53,14 +53,14 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
         <div className="flex items-center justify-between p-6 pb-4 bg-theme-gradient">
           <div className="flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/Logo.svg" alt="Grand Line Logo" className="h-5 object-contain" />
+            <img src="/Logo.svg" alt="Grand Line Logo" className="h-7 object-contain" />
           </div>
           <button
-            className="p-2 text-[#233876] hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 text-[#ffffff] hover:bg-gray-100 rounded-full transition-colors"
             onClick={onClose}
             aria-label="Close menu"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
@@ -239,7 +239,14 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
 
         {/* ── Log out ── */}
         <div className="p-6 mt-auto">
-          <button className="flex items-center gap-3 w-full font-bold text-red-500 hover:text-red-600 transition-colors">
+          <button 
+            onClick={() => {
+              document.cookie = "grandline_auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+              window.location.href = "/login";
+              onClose?.();
+            }}
+            className="flex items-center gap-3 w-full font-bold text-red-500 hover:text-red-600 transition-colors"
+          >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>

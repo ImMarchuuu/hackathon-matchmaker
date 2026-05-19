@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { LoginPayload } from "@/types/auth";
 
 /**
@@ -13,11 +14,13 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  const router = useRouter();
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: POST to /api/v1/auth/login
-    const payload: LoginPayload = { email, password };
-    console.log(payload);
+    // Mock Auth logic
+    document.cookie = "grandline_auth=u1; path=/; max-age=86400";
+    router.push("/find-team");
   };
 
   return (
@@ -63,7 +66,7 @@ export default function LoginPage() {
         {/* Submit */}
         <button
           type="submit"
-          className="w-full py-3 rounded-xl bg-navy-700 text-white font-semibold hover:bg-navy-600 transition-colors"
+          className="w-full py-3 rounded-full bg-[#1b3168] text-white font-bold hover:bg-[#12234b] transition-colors shadow-md"
         >
           Log In
         </button>

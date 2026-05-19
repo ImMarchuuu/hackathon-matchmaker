@@ -38,7 +38,11 @@ function ProfilePopup({ onClose }: { onClose: () => void }) {
           การตั้งค่า
         </Link>
         <button 
-          onClick={onClose} 
+          onClick={() => {
+            document.cookie = "grandline_auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+            window.location.href = "/login";
+            onClose?.();
+          }}
           className="w-full bg-white text-[#ff4d4f] border border-[#ff4d4f]/30 font-bold tracking-wide py-3.5 rounded-full text-center hover:bg-red-50 transition-colors text-sm shadow-sm mt-1"
         >
           ออกจากระบบ

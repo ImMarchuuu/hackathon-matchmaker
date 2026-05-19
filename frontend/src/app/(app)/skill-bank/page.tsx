@@ -88,11 +88,9 @@ export default function SkillBankPage() {
     .sort((a, b) => b[1] - a[1]);
 
   return (
-    <div className="w-full min-h-screen bg-[#f5f7fa] py-8">
+    <div className="w-full min-h-screen bg-[#f5f7fa] py-4 sm:py-8">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 space-y-6 pb-12">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-extrabold text-[#1b3168] tracking-tight">Skill Bank</h1>
-        </div>
+        
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         

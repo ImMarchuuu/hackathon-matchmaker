@@ -29,7 +29,7 @@ export default function SkillRankSection({
               key={skill.name}
               className="flex flex-col items-center gap-3 p-2 transition-transform hover:scale-105"
             >
-              <div className="w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center transition-transform hover:scale-110">
+              <div className="w-20 h-20 sm:w-25 sm:h-25 flex items-center justify-center transition-transform hover:scale-110">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img 
                   src={`/${skill.rank}.svg`} 

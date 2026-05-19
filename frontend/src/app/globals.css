@@ -16,6 +16,7 @@
   
   /* ตัวแปรสำหรับ Gradient */
   --theme-gradient: linear-gradient(90deg, #26B1F8 11.02%, #0F5EC1 59.2%, #022DA0 109.82%);
+  --login-gradient: linear-gradient(0deg, #26B1F8 11.02%, #0F5EC1 59.2%, #022DA0 109.82%);
 }
 
 /*

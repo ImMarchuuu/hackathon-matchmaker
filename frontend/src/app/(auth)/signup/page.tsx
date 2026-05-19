@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { SignupPayload } from "@/types/auth";
 
 /**
@@ -15,15 +16,17 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  const router = useRouter();
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Validate password match, then POST to /api/v1/auth/register
     if (password !== confirmPassword) {
       alert("Passwords do not match");
       return;
     }
-    const payload: SignupPayload = { displayName, email, password };
-    console.log(payload);
+    // Mock Auth logic
+    document.cookie = "grandline_auth=u1; path=/; max-age=86400";
+    router.push("/find-team");
   };
 
   return (
@@ -101,7 +104,7 @@ export default function SignupPage() {
         {/* Submit */}
         <button
           type="submit"
-          className="w-full py-3 rounded-xl bg-navy-700 text-white font-semibold hover:bg-navy-600 transition-colors"
+          className="w-full py-3 rounded-full bg-[#1b3168] text-white font-bold hover:bg-[#12234b] transition-colors shadow-md"
         >
           Sign Up
         </button>
