@@ -1,3 +1,5 @@
+"use client";
+
 import ActiveTeamCard, { ActiveTeamCardData } from "@/components/team/ActiveTeamCard";
 import { CURRENT_USER_ID, mockTeams, mockUsers } from "@/data/mockData";
 import Link from "next/link";
@@ -44,10 +46,7 @@ function buildActiveCardData(team: typeof mockTeams[0]): ActiveTeamCardData {
   };
 }
 
-export default async function ActiveTeamsPage() {
-  // ─── Artificial delay directly in the Server Component body ───
-  await new Promise((resolve) => setTimeout(resolve, 1500));
-
+export default function ActiveTeamsPage() {
   // Only show teams where the current user is a member
   const myTeams = mockTeams.filter((t) =>
     t.currentMemberIds.includes(CURRENT_USER_ID)
