@@ -59,12 +59,12 @@ function buildPeopleViewModel(user: User): PeopleCardViewModel {
 
 // ─── Simulated async fetcher (swap internal logic for real API later) ─────────
 async function fetchTeams(): Promise<TeamCardViewModel[]> {
-  await new Promise((res) => setTimeout(res, 350)); // simulate ~350ms network latency
+  await new Promise((res) => setTimeout(res, 1500)); // simulate ~1500ms network latency
   return mockTeams.map((t) => buildTeamViewModel(t, mockUsers));
 }
 
 async function fetchPeople(): Promise<PeopleCardViewModel[]> {
-  await new Promise((res) => setTimeout(res, 350));
+  await new Promise((res) => setTimeout(res, 1500)); // simulate ~1500ms network latency
   return Object.values(mockUsers).map(buildPeopleViewModel);
 }
 

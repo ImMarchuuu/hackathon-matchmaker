@@ -1,14 +1,15 @@
-"use client";
-
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import MyRoleSection from "@/components/profile/MyRoleSection";
 import SkillRankSection from "@/components/profile/SkillRankSection";
 import CompetitionSection from "@/components/profile/CompetitionSection";
 import ActiveTeamSection from "@/components/profile/ActiveTeamSection";
-import { CURRENT_USER_ID, mockUsers, mockPendingRequests, mockTeams, User } from "@/data/mockData";
+import { CURRENT_USER_ID, mockUsers, mockPendingRequests, mockTeams } from "@/data/mockData";
 
-export default function DynamicProfilePage({ params }: { params: { id: string } }) {
+export default async function DynamicProfilePage({ params }: { params: { id: string } }) {
+  // ─── Artificial delay directly in the Server Component body ───
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+
   const profileId = params.id;
   const user = mockUsers[profileId];
 
@@ -157,7 +158,7 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
               </li>
               <li className="flex items-center gap-3 text-[#233876] font-semibold text-sm">
                 <svg className="w-5 h-5 text-[#233876]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                 </svg>
                 {user.birthDate}
               </li>
