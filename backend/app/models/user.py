@@ -71,7 +71,8 @@ class UserDocument(BaseModel):
 # ─── API request models ───────────────────────────────────────────────────────
 
 class UserRegisterRequest(BaseModel):
-    username: str = Field(min_length=3, max_length=32)
+    name: str = Field(min_length=2, max_length=50)
+    username: str = Field(min_length=3, max_length=32, pattern=r"^[a-z0-9_]+$")
     email: EmailStr
     password: str = Field(min_length=8)
 

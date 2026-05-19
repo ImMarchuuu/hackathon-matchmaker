@@ -30,3 +30,12 @@ async def get_by_id(db: AsyncIOMotorDatabase, user_id: ObjectId) -> dict | None:
 async def get_by_ids(db: AsyncIOMotorDatabase, user_ids: list[ObjectId]) -> list[dict]:
     cursor = db["users"].find({"_id": {"$in": user_ids}}, _SAFE_PROJECTION)
     return await cursor.to_list(length=None)
+
+
+async def get_by_email(db: AsyncIOMotorDatabase, email: str) -> dict | None:
+    """Includes password_hash — only use for auth checks."""
+    return await db["users"].find_one({"email": email})
+
+
+async def create(db: AsyncIOMotorDatabase, doc: dict) -> None:
+    await db["users"].insert_one(doc)

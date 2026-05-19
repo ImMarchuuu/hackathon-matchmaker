@@ -21,6 +21,10 @@ class Settings(BaseSettings):
 
     cors_origins: str = "http://localhost:3000"
 
+    jwt_secret: str = "change-me-in-production"
+    jwt_algorithm: str = "HS256"
+    jwt_expires_minutes: int = 10080  # 7 days
+
     @property
     def cors_origins_list(self) -> List[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

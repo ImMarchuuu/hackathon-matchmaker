@@ -3,24 +3,34 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { LoginPayload } from "@/types/auth";
+import { apiFetch } from "@/lib/api";
+import type { AuthResponse, LoginPayload } from "@/types/auth";
 
-/**
- * Login page — GRAND LINE theme.
- * Form fields: email, password.
- * TODO: Connect to auth API endpoint for actual login.
- */
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const router = useRouter();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock Auth logic
-    document.cookie = "grandline_auth=u1; path=/; max-age=86400";
-    router.push("/find-team");
+    setError("");
+    setLoading(true);
+    try {
+      const payload: LoginPayload = { email, password };
+      const res = await apiFetch<AuthResponse>("/api/v1/auth/login", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+      document.cookie = `grandline_auth=${res.token}; path=/; max-age=604800; SameSite=Lax`;
+      router.push("/find-team");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Login failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -31,7 +41,6 @@ export default function LoginPage() {
       </p>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Email */}
         <div>
           <label htmlFor="login-email" className="block text-sm font-medium text-navy-600 mb-1">
             Email
@@ -47,7 +56,6 @@ export default function LoginPage() {
           />
         </div>
 
-        {/* Password */}
         <div>
           <label htmlFor="login-password" className="block text-sm font-medium text-navy-600 mb-1">
             Password
@@ -63,16 +71,19 @@ export default function LoginPage() {
           />
         </div>
 
-        {/* Submit */}
+        {error && (
+          <p className="text-sm text-red-500 text-center">{error}</p>
+        )}
+
         <button
           type="submit"
-          className="w-full py-3 rounded-full bg-[#1b3168] text-white font-bold hover:bg-[#12234b] transition-colors shadow-md"
+          disabled={loading}
+          className="w-full py-3 rounded-full bg-[#1b3168] text-white font-bold hover:bg-[#12234b] transition-colors shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          Log In
+          {loading ? "Logging in…" : "Log In"}
         </button>
       </form>
 
-      {/* Link to sign up */}
       <p className="mt-6 text-center text-sm text-navy-400">
         Don&apos;t have an account?{" "}
         <Link href="/signup" className="text-navy-700 font-semibold hover:underline">
