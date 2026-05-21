@@ -19,3 +19,8 @@ async def get_all(
 
 async def get_by_id(db: AsyncIOMotorDatabase, team_id: ObjectId) -> dict | None:
     return await db["teams"].find_one({"_id": team_id})
+
+
+async def create(db: AsyncIOMotorDatabase, doc: dict) -> dict:
+    result = await db["teams"].insert_one(doc)
+    return await db["teams"].find_one({"_id": result.inserted_id})
