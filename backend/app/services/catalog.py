@@ -15,3 +15,8 @@ async def list_skills(db: AsyncIOMotorDatabase) -> list[SkillItem]:
     """All distinct skills from the users collection, sorted by popularity."""
     docs = await catalog_repo.get_all_skills(db)
     return [SkillItem(**doc) for doc in docs]
+
+
+async def search_skills(db: AsyncIOMotorDatabase, q: str) -> list[str]:
+    """Prefix-search skill_catalog for autocomplete suggestions."""
+    return await catalog_repo.search_skills(db, q)

@@ -1,4 +1,42 @@
+import re
+from datetime import datetime
+
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pymongo import UpdateOne
+
+
+async def search_skills(
+    db: AsyncIOMotorDatabase,
+    q: str,
+    limit: int = 10,
+) -> list[str]:
+    """Prefix-match skill names from skill_catalog, case-insensitive."""
+    pattern = re.compile(f"^{re.escape(q)}", re.IGNORECASE)
+    cursor = (
+        db["skill_catalog"]
+        .find({"name": {"$regex": pattern}}, {"_id": 0, "name": 1})
+        .sort("name", 1)
+        .limit(limit)
+    )
+    return [doc["name"] async for doc in cursor]
+
+
+async def upsert_skills(db: AsyncIOMotorDatabase, names: list[str]) -> None:
+    """Insert skill names that don't exist yet; ignore duplicates."""
+    if not names:
+        return
+    now = datetime.utcnow()
+    ops = [
+        UpdateOne(
+            {"name": name},
+            {"$setOnInsert": {"name": name, "created_at": now}},
+            upsert=True,
+        )
+        for name in names
+        if name.strip()
+    ]
+    if ops:
+        await db["skill_catalog"].bulk_write(ops, ordered=False)
 
 
 async def get_role_counts(db: AsyncIOMotorDatabase) -> dict[str, int]:

@@ -4,6 +4,7 @@ from fastapi import HTTPException
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.models.team import TeamCreateRequest, TeamDetailResponse, TeamResponse
+from app.repositories import catalog as catalog_repo
 from app.repositories import team as team_repo
 from app.repositories import user as user_repo
 
@@ -45,6 +46,10 @@ async def create_team(
     }
 
     inserted = await team_repo.create(db, doc)
+
+    # Grow the skill catalog with any new skill names
+    await catalog_repo.upsert_skills(db, list(payload.required_skills))
+
     return TeamResponse.from_document(inserted)
 
 

@@ -366,6 +366,20 @@ NOTIF_INDEXES = [
     {"keys": [("created_at", ASCENDING)], "kwargs": {}},
 ]
 
+# All known skills from user profiles and team requirements
+_SEED_SKILLS = sorted({
+    # User hard skills
+    "React", "NextJS", "LLM", "Python", "Figma", "Prototype", "Present",
+    "Wireframe", "Strategy", "Sales", "SEO", "Market", "API", "DB",
+    "Vision", "Cloud", "Story", "Brand", "Ads", "NLP",
+    # Team required skills
+    "Visual",
+})
+
+SKILL_CATALOG_INDEXES = [
+    {"keys": [("name", ASCENDING)], "kwargs": {"unique": True}},
+]
+
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
@@ -392,6 +406,14 @@ def seed() -> None:
     for idx in TEAM_INDEXES:
         teams_col.create_index(idx["keys"], **idx["kwargs"])
     log.info("✅  teams — inserted %d documents, %d indexes", len(team_docs), len(TEAM_INDEXES))
+
+    # ── skill_catalog ──
+    skill_col = db["skill_catalog"]
+    skill_col.drop()
+    skill_col.insert_many([{"name": s, "created_at": NOW} for s in _SEED_SKILLS])
+    for idx in SKILL_CATALOG_INDEXES:
+        skill_col.create_index(idx["keys"], **idx["kwargs"])
+    log.info("✅  skill_catalog — inserted %d documents, %d indexes", len(_SEED_SKILLS), len(SKILL_CATALOG_INDEXES))
 
     # ── behavioral_votes (empty, indexes only) ──
     votes_col = db["behavioral_votes"]

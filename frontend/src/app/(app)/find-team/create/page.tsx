@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
+import SkillAutocomplete from "@/components/shared/SkillAutocomplete";
 
 const ROLE_OPTIONS = [
   "Developer",
@@ -33,14 +34,6 @@ export default function CreateTeamPage() {
     setSelectedRoles((prev) =>
       prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]
     );
-
-  const addSkill = () => {
-    const trimmed = skillInput.trim();
-    if (trimmed && !selectedSkills.includes(trimmed)) {
-      setSelectedSkills((prev) => [...prev, trimmed]);
-      setSkillInput("");
-    }
-  };
 
   const removeSkill = (skill: string) =>
     setSelectedSkills((prev) => prev.filter((s) => s !== skill));
@@ -212,29 +205,18 @@ export default function CreateTeamPage() {
 
         {/* ── Skills ── */}
         <div className="space-y-2">
-          <label htmlFor="skill-input" className="block text-sm font-bold text-[#1b3168]">
+          <label className="block text-sm font-bold text-[#1b3168]">
             ทักษะที่ต้องการ (Skill)
           </label>
-          <div className="flex items-center gap-2">
-            <input
-              id="skill-input"
-              type="text"
-              value={skillInput}
-              onChange={(e) => setSkillInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") { e.preventDefault(); addSkill(); }
-              }}
-              placeholder="เช่น Python, Figma"
-              className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-[#1b3168] text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1b3168]/30 focus:border-[#1b3168]"
-            />
-            <button
-              type="button"
-              onClick={addSkill}
-              className="px-4 py-3 rounded-xl bg-[#1b3168] text-white text-sm font-bold hover:bg-[#12224f] transition-colors"
-            >
-              +
-            </button>
-          </div>
+          <SkillAutocomplete
+            value={skillInput}
+            onChange={setSkillInput}
+            onAdd={(skill) => {
+              if (!selectedSkills.includes(skill)) {
+                setSelectedSkills((prev) => [...prev, skill]);
+              }
+            }}
+          />
           {selectedSkills.length > 0 && (
             <div className="flex flex-wrap gap-2 pt-1">
               {selectedSkills.map((skill) => (
