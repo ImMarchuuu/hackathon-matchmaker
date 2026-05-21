@@ -13,7 +13,7 @@ async def get_all(
         query["status"] = status
     if role:
         query["required_roles"] = role
-    cursor = db["teams"].find(query)
+    cursor = db["teams"].find(query).sort("created_at", -1)
     return await cursor.to_list(length=None)
 
 
