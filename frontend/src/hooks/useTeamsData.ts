@@ -1,74 +1,65 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { mockTeams, mockUsers, Team, User } from "@/data/mockData";
+import { apiFetch } from "@/lib/api";
+import type { ApiUser } from "@/types/profile";
+import type { ApiTeam } from "@/types/team";
 import type { TeamCardViewModel, PeopleCardViewModel } from "@/types";
 
-// ─── Utility: build a TeamCardViewModel from a normalized Team + User lookup ──
-function buildTeamViewModel(team: Team, users: Record<string, User>): TeamCardViewModel {
-  const leader = users[team.leaderId];
+function computeDaysLeft(endDate: string): number {
+  const diff = new Date(endDate).getTime() - Date.now();
+  return Math.max(0, Math.ceil(diff / 86_400_000));
+}
 
-  const detailedMembers = team.currentMemberIds
-    .map((uid) => users[uid])
-    .filter(Boolean)
-    .map((u, idx) => ({
-      name: u.name,
-      avatar: u.avatarUrl,
-      role: team.currentMemberIds[idx] === team.leaderId
-        ? u.roles[0]
-        : u.roles[0],
-      score: u.skillBank.softSkillScore,
-    }));
+function fmt(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
 
-  const memberAvatars = team.currentMemberIds
-    .map((uid) => users[uid]?.avatarUrl)
-    .filter(Boolean) as string[];
-
-  const start = new Date(team.startDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-  const end = new Date(team.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+function buildTeamViewModel(
+  team: ApiTeam,
+  userMap: Record<string, ApiUser>,
+): TeamCardViewModel {
+  const leader = userMap[team.leader_id];
+  const members = team.member_ids.map((id) => userMap[id]).filter(Boolean) as ApiUser[];
 
   return {
-    id: team.id,
-    avatarUrl: leader?.avatarUrl ?? "https://i.pravatar.cc/150",
+    id: team._id,
+    avatarUrl: leader?.avatar_url ?? "/avatar.png",
     title: team.title,
     authorName: leader?.name ?? "Unknown",
-    dateRange: `${start} - ${end}`,
-    daysLeft: team.daysLeft,
-    roles: team.requiredRoles,
-    skills: team.requiredSkills,
-    currentMemberCount: team.currentMemberIds.length,
-    maxMembers: team.maxMembers,
-    memberAvatars,
+    dateRange: `${fmt(team.start_date)} - ${fmt(team.end_date)}`,
+    daysLeft: computeDaysLeft(team.end_date),
+    roles: team.required_roles,
+    skills: team.required_skills,
+    currentMemberCount: team.member_ids.length,
+    maxMembers: team.max_members,
+    memberAvatars: members.map((u) => u.avatar_url ?? "/avatar.png"),
     description: team.description,
-    detailedMembers,
+    detailedMembers: members.map((u) => ({
+      name: u.name,
+      avatar: u.avatar_url ?? "/avatar.png",
+      role: u.role[0]?.name ?? "Member",
+      score: u.behavioral_rates,
+    })),
   };
 }
 
-// ─── Utility: build a PeopleCardViewModel from a User ────────────────────────
-function buildPeopleViewModel(user: User): PeopleCardViewModel {
+function buildPeopleViewModel(user: ApiUser): PeopleCardViewModel {
   return {
-    id: user.id,
+    id: user._id,
     name: user.name,
-    bio: user.bio,
-    avatarUrl: user.avatarUrl,
-    roleTags: user.roles,
-    skillTags: user.skillBank.hardSkills.map((s) => s.name),
+    bio: user.bio ?? "",
+    avatarUrl: user.avatar_url ?? "/avatar.png",
+    roleTags: user.role.map((r) => r.name),
+    skillTags: user.skills.map((s) => s.name),
     isFavorited: false,
   };
 }
 
-// ─── Simulated async fetcher (swap internal logic for real API later) ─────────
-async function fetchTeams(): Promise<TeamCardViewModel[]> {
-  await new Promise((res) => setTimeout(res, 350)); // simulate ~350ms network latency
-  return mockTeams.map((t) => buildTeamViewModel(t, mockUsers));
-}
-
-async function fetchPeople(): Promise<PeopleCardViewModel[]> {
-  await new Promise((res) => setTimeout(res, 350));
-  return Object.values(mockUsers).map(buildPeopleViewModel);
-}
-
-// ─── Custom Hook: useTeamsData ────────────────────────────────────────────────
 export function useTeamsData() {
   const [teams, setTeams] = useState<TeamCardViewModel[]>([]);
   const [people, setPeople] = useState<PeopleCardViewModel[]>([]);
@@ -81,13 +72,19 @@ export function useTeamsData() {
     async function load() {
       try {
         setIsLoading(true);
-        const [teamsData, peopleData] = await Promise.all([fetchTeams(), fetchPeople()]);
+        const [apiTeams, apiUsers] = await Promise.all([
+          apiFetch<ApiTeam[]>("/api/v1/teams"),
+          apiFetch<ApiUser[]>("/api/v1/users"),
+        ]);
+
+        const userMap = Object.fromEntries(apiUsers.map((u) => [u._id, u]));
+
         if (!cancelled) {
-          setTeams(teamsData);
-          setPeople(peopleData);
+          setTeams(apiTeams.map((t) => buildTeamViewModel(t, userMap)));
+          setPeople(apiUsers.map(buildPeopleViewModel));
         }
       } catch (e) {
-        if (!cancelled) setError("Failed to load data");
+        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load data");
       } finally {
         if (!cancelled) setIsLoading(false);
       }

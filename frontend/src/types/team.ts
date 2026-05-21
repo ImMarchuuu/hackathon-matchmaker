@@ -1,5 +1,22 @@
 /** Types for team and people listings */
 
+/** Raw shape returned by GET /api/v1/teams and GET /api/v1/teams/{id} */
+export interface ApiTeam {
+  _id: string;
+  title: string;
+  leader_id: string;
+  status: "WAITING" | "IN_PROGRESS";
+  start_date: string;
+  end_date: string;
+  days_left: number;
+  required_roles: string[];
+  required_skills: string[];
+  positions: { role: string; filled: boolean; invited_user_id: string | null }[];
+  member_ids: string[];
+  max_members: number;
+  description?: string;
+}
+
 export interface TeamCardData {
   teamName: string;
   creatorName?: string;
