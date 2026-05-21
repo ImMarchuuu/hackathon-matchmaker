@@ -4,10 +4,20 @@ from fastapi import APIRouter, Depends
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.db import db_dependency
+from app.core.deps import get_current_user_id
 from app.models.user import RoleName, UserPublicResponse
 from app.services import user as user_service
 
 router = APIRouter(prefix="/users", tags=["Users"])
+
+
+@router.get("/me", response_model=UserPublicResponse, summary="Get current user profile")
+async def get_me(
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+) -> UserPublicResponse:
+    """Return the profile of the currently authenticated user."""
+    return await user_service.get_current_user(db, current_user_id)
 
 
 @router.get("", response_model=list[UserPublicResponse], summary="List users")
@@ -20,7 +30,7 @@ async def list_users(
     return await user_service.list_users(db, role=role, skill=skill)
 
 
-@router.get("/{username}", response_model=UserPublicResponse, summary="Get user profile")
+@router.get("/{username}", response_model=UserPublicResponse, summary="Get user profile by username")
 async def get_user(
     username: str,
     db: AsyncIOMotorDatabase = Depends(db_dependency),

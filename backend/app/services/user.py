@@ -1,3 +1,4 @@
+from bson import ObjectId
 from fastapi import HTTPException
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -22,4 +23,16 @@ async def get_user_profile(
     doc = await user_repo.get_by_username(db, username)
     if not doc:
         raise HTTPException(status_code=404, detail=f"User '{username}' not found")
+    return UserPublicResponse.from_document(doc)
+
+
+async def get_current_user(
+    db: AsyncIOMotorDatabase,
+    user_id: str,
+) -> UserPublicResponse:
+    if not ObjectId.is_valid(user_id):
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    doc = await user_repo.get_by_id(db, ObjectId(user_id))
+    if not doc:
+        raise HTTPException(status_code=404, detail="User not found")
     return UserPublicResponse.from_document(doc)

@@ -2,19 +2,21 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { apiFetch } from "@/lib/api";
+import type { ApiUser } from "@/types/profile";
 
-function ProfilePopup({ onClose }: { onClose: () => void }) {
+function ProfilePopup({ onClose, user }: { onClose: () => void; user: ApiUser | null }) {
   return (
     <div className="absolute top-[110%] right-0 mt-1 w-72 bg-white rounded-[2rem] shadow-xl border border-gray-100 p-6 z-50 flex flex-col gap-5 cursor-default origin-top-right animate-in fade-in zoom-in-95 duration-200">
       {/* ── Profile Summary ── */}
       <div className="flex flex-col items-center gap-1">
         <div className="w-20 h-20 rounded-full border-4 border-white shadow-sm overflow-hidden bg-gray-50 shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/avatar.png" alt="Murchy D.Luffy" className="w-full h-full object-cover" />
+          <img src={user?.avatar_url ?? "/avatar.png"} alt={user?.name ?? "Profile"} className="w-full h-full object-cover" />
         </div>
         <div className="text-center mt-2">
-          <h4 className="text-[#1b3168] font-black text-xl leading-none">Murchy D.Luffy</h4>
-          <p className="text-gray-500 font-semibold text-xs mt-1.5">marchydluffy@gmail.com</p>
+          <h4 className="text-[#1b3168] font-black text-xl leading-none">{user?.name ?? "—"}</h4>
+          <p className="text-gray-500 font-semibold text-xs mt-1.5">{user?.email ?? "—"}</p>
         </div>
       </div>
 
@@ -177,8 +179,13 @@ function NotificationPopup({ onClose }: { onClose: () => void }) {
 export default function Header({ onMenuToggle }: { onMenuToggle?: () => void }) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<ApiUser | null>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    apiFetch<ApiUser>("/api/v1/users/me").then(setCurrentUser).catch(() => null);
+  }, []);
 
   // Handle click outside to close popups
   useEffect(() => {
@@ -247,29 +254,29 @@ export default function Header({ onMenuToggle }: { onMenuToggle?: () => void }) 
         </div>
 
         {/* ── Mobile Avatar (Direct Link) ── */}
-        <Link 
-          href="/profile" 
+        <Link
+          href="/profile"
           className="w-9 h-9 rounded-full border-2 border-white/80 hover:border-white transition-colors overflow-hidden block lg:hidden"
           aria-label="Go to profile"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/avatar.png" alt="Profile" className="w-full h-full object-cover" />
+          <img src={currentUser?.avatar_url ?? "/avatar.png"} alt="Profile" className="w-full h-full object-cover" />
         </Link>
 
         {/* ── Desktop Avatar (Dropdown Popup) ── */}
         <div className="relative hidden lg:block" ref={profileRef}>
-          <button 
+          <button
             onClick={() => setIsProfileOpen(!isProfileOpen)}
             className="w-9 h-9 rounded-full border-2 border-white/80 hover:border-white transition-colors overflow-hidden focus:outline-none focus:ring-2 focus:ring-white/50 block"
             aria-label="Toggle profile menu"
             aria-expanded={isProfileOpen}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/avatar.png" alt="Profile" className="w-full h-full object-cover" />
+            <img src={currentUser?.avatar_url ?? "/avatar.png"} alt="Profile" className="w-full h-full object-cover" />
           </button>
           
           {/* Profile Dropdown Popup */}
-          {isProfileOpen && <ProfilePopup onClose={() => setIsProfileOpen(false)} />}
+          {isProfileOpen && <ProfilePopup onClose={() => setIsProfileOpen(false)} user={currentUser} />}
         </div>
       </div>
     </header>
