@@ -39,3 +39,18 @@ async def get_by_email(db: AsyncIOMotorDatabase, email: str) -> dict | None:
 
 async def create(db: AsyncIOMotorDatabase, doc: dict) -> None:
     await db["users"].insert_one(doc)
+
+
+async def update_profile(
+    db: AsyncIOMotorDatabase,
+    user_id: ObjectId,
+    fields: dict,
+) -> dict | None:
+    """Apply $set patch and return the updated document (safe projection)."""
+    from pymongo import ReturnDocument
+    return await db["users"].find_one_and_update(
+        {"_id": user_id},
+        {"$set": fields},
+        return_document=ReturnDocument.AFTER,
+        projection=_SAFE_PROJECTION,
+    )

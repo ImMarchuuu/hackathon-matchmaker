@@ -5,7 +5,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.db import db_dependency
 from app.core.deps import get_current_user_id
-from app.models.user import RoleName, UserPublicResponse
+from app.models.user import RoleName, UpdateProfileRequest, UserPublicResponse
 from app.services import user as user_service
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -18,6 +18,16 @@ async def get_me(
 ) -> UserPublicResponse:
     """Return the profile of the currently authenticated user."""
     return await user_service.get_current_user(db, current_user_id)
+
+
+@router.put("/me", response_model=UserPublicResponse, summary="Update current user profile")
+async def update_me(
+    payload: UpdateProfileRequest,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+) -> UserPublicResponse:
+    """Update mutable profile fields for the currently authenticated user."""
+    return await user_service.update_profile(db, current_user_id, payload)
 
 
 @router.get("", response_model=list[UserPublicResponse], summary="List users")

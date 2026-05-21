@@ -72,10 +72,23 @@ export default function EditProfilePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    // TODO: call PUT /api/v1/users/me when that endpoint is implemented
-    await new Promise((r) => setTimeout(r, 600));
-    setSaving(false);
-    router.push("/profile");
+    try {
+      await apiFetch("/api/v1/users/me", {
+        method: "PUT",
+        body: JSON.stringify({
+          name: form.name || undefined,
+          bio: form.bio || undefined,
+          university: form.university || undefined,
+          birth_date: form.birth_date || undefined,
+          github: form.github || undefined,
+          linkedin: form.linkedin || undefined,
+          roles: form.roles,
+        }),
+      });
+      router.push("/profile");
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) {

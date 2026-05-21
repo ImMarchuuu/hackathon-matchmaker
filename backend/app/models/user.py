@@ -77,6 +77,16 @@ class UserRegisterRequest(BaseModel):
     password: str = Field(min_length=8)
 
 
+class UpdateProfileRequest(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=2, max_length=50)
+    bio: Optional[str] = Field(default=None, max_length=500)
+    university: Optional[str] = None
+    birth_date: Optional[str] = None
+    github: Optional[str] = None
+    linkedin: Optional[str] = None
+    roles: Optional[list[RoleName]] = None
+
+
 class UpdateSkillsRequest(BaseModel):
     skills: list[SkillEntry]
 
