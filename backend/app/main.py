@@ -35,11 +35,13 @@ def create_app() -> FastAPI:
     from app.api.v1.auth import router as auth_router
     from app.api.v1.users import router as users_router
     from app.api.v1.teams import router as teams_router
+    from app.api.v1.catalog import router as catalog_router
 
     application.include_router(health_router, prefix="/api/v1")
     application.include_router(auth_router, prefix="/api/v1")
     application.include_router(users_router, prefix="/api/v1")
     application.include_router(teams_router, prefix="/api/v1")
+    application.include_router(catalog_router, prefix="/api/v1")
 
     return application
 
