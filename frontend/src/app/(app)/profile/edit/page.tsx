@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import type { ApiUser } from "@/types/profile";
+import Toast from "@/components/shared/Toast";
 
 const ROLE_OPTIONS = [
   "Developer",
@@ -33,6 +34,7 @@ export default function EditProfilePage() {
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [uploadingCover, setUploadingCover] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "error" | "success" } | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<EditForm>({
@@ -79,16 +81,25 @@ export default function EditProfilePage() {
       const formData = new FormData();
       formData.append("file", file);
       const token = document.cookie.match(/(?:^|;\s*)grandline_auth=([^;]+)/)?.[1];
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}${endpoint}`, {
+      const res = await fetch(endpoint, {
         method: "POST",
         headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: formData,
       });
-      if (!res.ok) throw new Error("Upload failed");
+      if (!res.ok) {
+        let message = "Upload failed";
+        try {
+          const body = await res.json();
+          if (body?.detail) message = String(body.detail);
+        } catch { /* ignore parse error */ }
+        setToast({ message, type: "error" });
+        return;
+      }
       const user: ApiUser = await res.json();
       setter(endpoint.includes("avatar") ? (user.avatar_url ?? "") : (user.cover_image ?? ""));
+      setToast({ message: "Image updated successfully", type: "success" });
     } catch {
-      // keep existing image on failure
+      setToast({ message: "Network error — please try again", type: "error" });
     } finally {
       setUploading(false);
     }
@@ -125,6 +136,7 @@ export default function EditProfilePage() {
   }
 
   return (
+    <>
     <div className="w-full min-h-screen bg-[#f4f6f8] py-0 px-0 sm:py-8 sm:px-6">
       <div className="flex flex-col w-full max-w-3xl mx-auto bg-white rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-200 shadow-sm overflow-hidden pb-10">
 
@@ -350,5 +362,14 @@ export default function EditProfilePage() {
         </form>
       </div>
     </div>
+
+    {toast && (
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast(null)}
+      />
+    )}
+    </>
   );
 }
