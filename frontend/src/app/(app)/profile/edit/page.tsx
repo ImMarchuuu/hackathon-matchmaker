@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
@@ -31,6 +31,10 @@ export default function EditProfilePage() {
   const [saving, setSaving] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState<EditForm>({
     name: "",
     bio: "",
@@ -69,6 +73,27 @@ export default function EditProfilePage() {
       roles: p.roles.includes(role) ? p.roles.filter((r) => r !== role) : [...p.roles, role],
     }));
 
+  const uploadImage = async (file: File, endpoint: string, setter: (url: string) => void, setUploading: (v: boolean) => void) => {
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const token = document.cookie.match(/(?:^|;\s*)grandline_auth=([^;]+)/)?.[1];
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}${endpoint}`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      const user: ApiUser = await res.json();
+      setter(endpoint.includes("avatar") ? (user.avatar_url ?? "") : (user.cover_image ?? ""));
+    } catch {
+      // keep existing image on failure
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -103,9 +128,18 @@ export default function EditProfilePage() {
     <div className="w-full min-h-screen bg-[#f4f6f8] py-0 px-0 sm:py-8 sm:px-6">
       <div className="flex flex-col w-full max-w-3xl mx-auto bg-white rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-200 shadow-sm overflow-hidden pb-10">
 
+        {/* ── Hidden file inputs ── */}
+        <input ref={avatarInputRef} type="file" accept="image/*" className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f, "/api/v1/users/me/avatar", setAvatarUrl, setUploadingAvatar); e.target.value = ""; }} />
+        <input ref={coverInputRef} type="file" accept="image/*" className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f, "/api/v1/users/me/cover", setCoverUrl, setUploadingCover); e.target.value = ""; }} />
+
         {/* ── Cover Photo ── */}
         <div className="relative w-full">
-          <div className="w-full aspect-[4/1] overflow-hidden relative bg-blue-100 rounded-none sm:rounded-t-[2rem] group cursor-pointer">
+          <div
+            onClick={() => coverInputRef.current?.click()}
+            className="w-full aspect-[4/1] overflow-hidden relative bg-blue-100 rounded-none sm:rounded-t-[2rem] group cursor-pointer"
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={coverUrl ?? "/cover-bg.png"}
@@ -113,12 +147,18 @@ export default function EditProfilePage() {
               className="w-full h-full object-cover object-center"
             />
             <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-              <span className="text-white text-sm font-bold">เปลี่ยนรูปปก</span>
+              {uploadingCover
+                ? <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                : <span className="text-white text-sm font-bold">เปลี่ยนรูปปก</span>
+              }
             </div>
           </div>
 
           {/* ── Avatar ── */}
-          <div className="absolute -bottom-14 left-6 sm:left-10 group cursor-pointer">
+          <div
+            onClick={() => avatarInputRef.current?.click()}
+            className="absolute -bottom-14 left-6 sm:left-10 group cursor-pointer"
+          >
             <div className="w-28 h-28 rounded-full border-4 border-white overflow-hidden bg-white shadow-sm relative">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -127,10 +167,13 @@ export default function EditProfilePage() {
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity rounded-full flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
+                {uploadingAvatar
+                  ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  : <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                }
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, UploadFile
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.db import db_dependency
@@ -28,6 +28,26 @@ async def update_me(
 ) -> UserPublicResponse:
     """Update mutable profile fields for the currently authenticated user."""
     return await user_service.update_profile(db, current_user_id, payload)
+
+
+@router.post("/me/avatar", response_model=UserPublicResponse, summary="Upload profile avatar")
+async def upload_avatar(
+    file: UploadFile = File(...),
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+) -> UserPublicResponse:
+    """Replace the current user's avatar. Accepts JPEG, PNG, WebP, GIF up to 5 MB."""
+    return await user_service.upload_avatar(db, current_user_id, file)
+
+
+@router.post("/me/cover", response_model=UserPublicResponse, summary="Upload cover image")
+async def upload_cover(
+    file: UploadFile = File(...),
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+) -> UserPublicResponse:
+    """Replace the current user's cover image. Accepts JPEG, PNG, WebP, GIF up to 5 MB."""
+    return await user_service.upload_cover(db, current_user_id, file)
 
 
 @router.get("", response_model=list[UserPublicResponse], summary="List users")

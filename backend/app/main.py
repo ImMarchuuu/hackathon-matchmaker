@@ -1,8 +1,10 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.core.db import close_db_connections, init_db_connections
@@ -42,6 +44,10 @@ def create_app() -> FastAPI:
     application.include_router(users_router, prefix="/api/v1")
     application.include_router(teams_router, prefix="/api/v1")
     application.include_router(catalog_router, prefix="/api/v1")
+
+    uploads_dir = Path("/app/uploads")
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+    application.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
     return application
 

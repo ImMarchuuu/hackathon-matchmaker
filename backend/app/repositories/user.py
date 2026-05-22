@@ -41,6 +41,21 @@ async def create(db: AsyncIOMotorDatabase, doc: dict) -> None:
     await db["users"].insert_one(doc)
 
 
+async def update_image(
+    db: AsyncIOMotorDatabase,
+    user_id: ObjectId,
+    field: str,
+    url: str,
+) -> dict | None:
+    from pymongo import ReturnDocument
+    return await db["users"].find_one_and_update(
+        {"_id": user_id},
+        {"$set": {field: url}},
+        return_document=ReturnDocument.AFTER,
+        projection=_SAFE_PROJECTION,
+    )
+
+
 async def update_profile(
     db: AsyncIOMotorDatabase,
     user_id: ObjectId,

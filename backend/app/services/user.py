@@ -1,9 +1,16 @@
+import uuid
+from pathlib import Path
+
 from bson import ObjectId
-from fastapi import HTTPException
+from fastapi import HTTPException, UploadFile
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.models.user import UpdateProfileRequest, UserPublicResponse
 from app.repositories import user as user_repo
+
+_ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+_MAX_IMAGE_BYTES = 5 * 1024 * 1024  # 5 MB
+_UPLOADS_ROOT = Path("/app/uploads")
 
 
 async def list_users(
@@ -76,6 +83,50 @@ async def update_profile(
         fields["role"] = merged
 
     doc = await user_repo.update_profile(db, oid, fields)
+    if not doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    return UserPublicResponse.from_document(doc)
+
+
+async def _save_upload(file: UploadFile, subfolder: str) -> str:
+    if file.content_type not in _ALLOWED_IMAGE_TYPES:
+        raise HTTPException(status_code=415, detail="Only JPEG, PNG, WebP, or GIF images are allowed")
+
+    data = await file.read()
+    if len(data) > _MAX_IMAGE_BYTES:
+        raise HTTPException(status_code=413, detail="Image must be smaller than 5 MB")
+
+    ext = (file.filename or "").rsplit(".", 1)[-1].lower() or "jpg"
+    filename = f"{uuid.uuid4().hex}.{ext}"
+    dest = _UPLOADS_ROOT / subfolder
+    dest.mkdir(parents=True, exist_ok=True)
+    (dest / filename).write_bytes(data)
+    return f"/uploads/{subfolder}/{filename}"
+
+
+async def upload_avatar(
+    db: AsyncIOMotorDatabase,
+    user_id: str,
+    file: UploadFile,
+) -> UserPublicResponse:
+    if not ObjectId.is_valid(user_id):
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    url = await _save_upload(file, "avatars")
+    doc = await user_repo.update_image(db, ObjectId(user_id), "avatar_url", url)
+    if not doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    return UserPublicResponse.from_document(doc)
+
+
+async def upload_cover(
+    db: AsyncIOMotorDatabase,
+    user_id: str,
+    file: UploadFile,
+) -> UserPublicResponse:
+    if not ObjectId.is_valid(user_id):
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    url = await _save_upload(file, "covers")
+    doc = await user_repo.update_image(db, ObjectId(user_id), "cover_image", url)
     if not doc:
         raise HTTPException(status_code=404, detail="User not found")
     return UserPublicResponse.from_document(doc)
