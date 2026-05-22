@@ -91,3 +91,9 @@ tmp/
 temp/
 coverage/
 .nyc_output/
+
+# Claude
+.claude/
+
+# Uploaded files (served at runtime, not committed)
+backend/uploads/
