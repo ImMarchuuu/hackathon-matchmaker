@@ -1,46 +1,38 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { apiFetch } from "@/lib/api";
+import type { ApiUser } from "@/types/profile";
 
-// Mock Toggle Component
-interface ToggleProps {
-  initialState?: boolean;
-  onChange?: (state: boolean) => void;
-}
-
-function Toggle({ initialState = false, onChange }: ToggleProps) {
+function Toggle({ initialState = false }: { initialState?: boolean }) {
   const [isOn, setIsOn] = useState(initialState);
-
-  const handleToggle = () => {
-    const newState = !isOn;
-    setIsOn(newState);
-    onChange?.(newState);
-  };
-
   return (
     <button
-      onClick={handleToggle}
-      className={`relative inline-flex items-center h-6 w-12 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shrink-0 ${isOn ? "bg-blue-600" : "bg-gray-200"
-        }`}
+      onClick={() => setIsOn(!isOn)}
+      className={`relative inline-flex items-center h-6 w-12 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 shrink-0 ${isOn ? "bg-blue-600" : "bg-gray-200"}`}
       aria-pressed={isOn}
     >
-      <span
-        className={`inline-block w-5 h-5 bg-white rounded-full transform transition-transform shadow-sm ${isOn ? "translate-x-6" : "translate-x-1"
-          }`}
-      />
+      <span className={`inline-block w-5 h-5 bg-white rounded-full transform transition-transform shadow-sm ${isOn ? "translate-x-6" : "translate-x-1"}`} />
     </button>
   );
 }
 
 export default function SettingsPage() {
+  const router = useRouter();
+  const [user, setUser] = useState<ApiUser | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch<ApiUser>("/api/v1/users/me")
+      .then(setUser)
+      .catch(() => router.replace("/login"))
+      .finally(() => setLoading(false));
+  }, [router]);
+
   return (
     <div className="w-full min-h-screen py-8 px-4 sm:px-6 flex flex-col items-center relative">
-      {/* ── Header ── */}
-      
-
-
-      {/* ── Main Container ── */}
       <div className="w-full max-w-3xl bg-white rounded-[2rem] shadow-sm p-6 sm:p-10 border border-gray-100 flex flex-col">
 
         {/* ── Section 1: บัญชีและการเชื่อมต่อ ── */}
@@ -53,7 +45,7 @@ export default function SettingsPage() {
           </div>
 
           <div className="flex flex-col gap-6 pl-2 sm:pl-8">
-            {/* Row 1 (Google) */}
+            {/* Email / Google */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100 shrink-0">
@@ -63,7 +55,11 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <p className="text-gray-800 font-bold text-sm">Google Account</p>
-                  <p className="text-gray-500 text-xs mt-0.5">marchydluffy@gmail.com</p>
+                  {loading ? (
+                    <div className="h-3 w-36 bg-gray-200 rounded animate-pulse mt-1" />
+                  ) : (
+                    <p className="text-gray-500 text-xs mt-0.5">{user?.email ?? "—"}</p>
+                  )}
                 </div>
               </div>
               <button className="bg-gray-100 text-gray-500 rounded-full px-5 py-2 font-semibold text-xs hover:bg-gray-200 transition-colors shrink-0">
@@ -71,7 +67,7 @@ export default function SettingsPage() {
               </button>
             </div>
 
-            {/* Row 2 (GitHub) */}
+            {/* GitHub */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center border border-gray-100 shrink-0">
@@ -81,12 +77,32 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <p className="text-gray-800 font-bold text-sm">GitHub Account</p>
-                  <p className="text-gray-500 text-xs mt-0.5">สำหรับโชว์พอร์ตใน Skill Bank</p>
+                  {loading ? (
+                    <div className="h-3 w-28 bg-gray-200 rounded animate-pulse mt-1" />
+                  ) : user?.github ? (
+                    <p className="text-gray-500 text-xs mt-0.5 truncate max-w-[200px]">{user.github}</p>
+                  ) : (
+                    <p className="text-gray-500 text-xs mt-0.5">สำหรับโชว์พอร์ตใน Skill Bank</p>
+                  )}
                 </div>
               </div>
-              <button className="bg-[#1b3168] text-white rounded-full px-5 py-2 font-bold text-xs hover:bg-[#12224f] transition-colors shadow-sm shrink-0">
-                เชื่อมต่อ GitHub
-              </button>
+              {!loading && (
+                user?.github ? (
+                  <Link
+                    href="/profile/edit"
+                    className="bg-gray-100 text-gray-500 rounded-full px-5 py-2 font-semibold text-xs hover:bg-gray-200 transition-colors shrink-0"
+                  >
+                    แก้ไข
+                  </Link>
+                ) : (
+                  <Link
+                    href="/profile/edit"
+                    className="bg-[#1b3168] text-white rounded-full px-5 py-2 font-bold text-xs hover:bg-[#12224f] transition-colors shadow-sm shrink-0"
+                  >
+                    เชื่อมต่อ GitHub
+                  </Link>
+                )
+              )}
             </div>
           </div>
         </div>
@@ -101,9 +117,7 @@ export default function SettingsPage() {
             </svg>
             <h2 className="font-bold text-lg">การแสดงผล</h2>
           </div>
-
           <div className="flex flex-col gap-6 pl-2 sm:pl-8">
-            {/* Row 1 (Dark Mode) */}
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-gray-800 font-bold text-sm">โหมดกลางคืน (Dark Mode)</p>
@@ -124,9 +138,7 @@ export default function SettingsPage() {
             </svg>
             <h2 className="font-bold text-lg">ความเป็นส่วนตัว & การแจ้งเตือน</h2>
           </div>
-
           <div className="flex flex-col gap-6 pl-2 sm:pl-8">
-            {/* Row 1 (Public Profile) */}
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-gray-800 font-bold text-sm">แสดงโปรไฟล์สาธารณะ</p>
@@ -134,8 +146,6 @@ export default function SettingsPage() {
               </div>
               <Toggle initialState={true} />
             </div>
-
-            {/* Row 2 (Email Notifications) */}
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-gray-800 font-bold text-sm">แจ้งเตือนคำขอเข้าร่วมทีมผ่าน Email</p>
@@ -143,8 +153,6 @@ export default function SettingsPage() {
               </div>
               <Toggle initialState={false} />
             </div>
-
-            {/* Row 3 (2FA) */}
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-gray-800 font-bold text-sm">ระบบยืนยันตัว 2 ชั้น (2FA)</p>
