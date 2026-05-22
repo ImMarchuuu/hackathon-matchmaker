@@ -77,10 +77,11 @@ export interface TeamCardViewModel {
 
 export interface PeopleCardViewModel {
   id: string;
+  username: string;
   name: string;
   bio: string;
   avatarUrl: string;
   roleTags: string[];
   skillTags: string[];
-  isFavorited?: boolean;
+  isFavorited: boolean;
 }

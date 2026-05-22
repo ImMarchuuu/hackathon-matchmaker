@@ -3,15 +3,17 @@
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { RoleIcon, SkillIcon } from "@/components/Icons";
+import { apiFetch } from "@/lib/api";
 
 export interface PersonCardData {
   id: string;
+  username: string;
   name: string;
   bio: string;
   avatarUrl: string;
   roleTags: string[];
   skillTags: string[];
-  isFavorited?: boolean;
+  isFavorited: boolean;
 }
 
 interface PersonCardProps {
@@ -105,13 +107,14 @@ function DynamicTagList({ tags, textColorClass }: { tags: string[], textColorCla
 }
 
 export default function PersonCard({ data }: PersonCardProps) {
-  const [isFavorited, setIsFavorited] = useState(data.isFavorited || false);
+  const [isFavorited, setIsFavorited] = useState(data.isFavorited);
+  const [saving, setSaving] = useState(false);
 
   return (
     <article className="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow h-fit w-full p-6 flex flex-col gap-4">
       {/* ── Top Section (Clickable) ── */}
-      <Link 
-        href={`/profile/${data.id}`} 
+      <Link
+        href={`/profile/${data.username}`}
         className="flex items-start gap-4 p-3 -m-3 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#1b3168]"
         aria-label={`View profile for ${data.name}`}
       >
@@ -166,11 +169,25 @@ export default function PersonCard({ data }: PersonCardProps) {
       {/* ── Bottom Section ── */}
       <div className="flex justify-end mt-2">
         <button
-          onClick={(e) => {
+          disabled={saving}
+          onClick={async (e) => {
             e.preventDefault();
-            setIsFavorited(!isFavorited);
+            setSaving(true);
+            const next = !isFavorited;
+            setIsFavorited(next);
+            try {
+              if (next) {
+                await apiFetch(`/api/v1/users/${data.id}/favorite`, { method: "POST" });
+              } else {
+                await apiFetch(`/api/v1/users/${data.id}/favorite`, { method: "DELETE" });
+              }
+            } catch {
+              setIsFavorited(!next);
+            } finally {
+              setSaving(false);
+            }
           }}
-          className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold tracking-wide transition-all shadow-sm ${
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold tracking-wide transition-all shadow-sm disabled:opacity-60 ${
             isFavorited
               ? "bg-[#1b3168] text-white border-2 border-[#1b3168] hover:bg-[#12224f] hover:border-[#12224f]"
               : "bg-white text-[#1b3168] border-2 border-[#1b3168] hover:bg-gray-50"

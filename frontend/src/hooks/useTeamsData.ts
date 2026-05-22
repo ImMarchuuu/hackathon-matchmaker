@@ -48,15 +48,16 @@ function buildTeamViewModel(
   };
 }
 
-function buildPeopleViewModel(user: ApiUser): PeopleCardViewModel {
+function buildPeopleViewModel(user: ApiUser, favoriteIds: Set<string>): PeopleCardViewModel {
   return {
     id: user._id,
+    username: user.username,
     name: user.name,
     bio: user.bio ?? "",
     avatarUrl: user.avatar_url ?? "/avatar.png",
     roleTags: user.role.map((r) => r.name),
     skillTags: user.skills.map((s) => s.name),
-    isFavorited: false,
+    isFavorited: favoriteIds.has(user._id),
   };
 }
 
@@ -72,16 +73,18 @@ export function useTeamsData() {
     async function load() {
       try {
         setIsLoading(true);
-        const [apiTeams, apiUsers] = await Promise.all([
+        const [apiTeams, apiUsers, apiFavorites] = await Promise.all([
           apiFetch<ApiTeam[]>("/api/v1/teams"),
           apiFetch<ApiUser[]>("/api/v1/users"),
+          apiFetch<ApiUser[]>("/api/v1/users/me/favorites").catch(() => [] as ApiUser[]),
         ]);
 
         const userMap = Object.fromEntries(apiUsers.map((u) => [u._id, u]));
+        const favoriteIds = new Set(apiFavorites.map((u) => u._id));
 
         if (!cancelled) {
           setTeams(apiTeams.map((t) => buildTeamViewModel(t, userMap)));
-          setPeople(apiUsers.map(buildPeopleViewModel));
+          setPeople(apiUsers.map((u) => buildPeopleViewModel(u, favoriteIds)));
         }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load data");
