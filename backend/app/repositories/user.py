@@ -72,6 +72,14 @@ async def toggle_favorite(
         return True
 
 
+async def remove_favorite(
+    db: AsyncIOMotorDatabase,
+    me_id: ObjectId,
+    target_id: ObjectId,
+) -> None:
+    await db["users"].update_one({"_id": me_id}, {"$pull": {"favorite_ids": target_id}})
+
+
 async def get_favorites(
     db: AsyncIOMotorDatabase,
     me_id: ObjectId,

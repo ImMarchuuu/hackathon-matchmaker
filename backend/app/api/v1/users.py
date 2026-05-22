@@ -80,6 +80,16 @@ async def get_user_teams(
     return await team_service.get_user_teams(db, user_id)
 
 
+@router.delete("/{user_id}/favorite", status_code=204, summary="Remove a user from favorites")
+async def remove_favorite(
+    user_id: str,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+) -> None:
+    """Remove user_id from current user's favorites. Idempotent — no error if not saved."""
+    await user_service.remove_favorite(db, current_user_id, user_id)
+
+
 @router.post("/{user_id}/favorite", response_model=FavoriteToggleResponse, summary="Toggle favorite on a user")
 async def toggle_favorite(
     user_id: str,

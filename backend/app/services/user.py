@@ -112,6 +112,18 @@ async def toggle_favorite(
     return FavoriteToggleResponse(target_id=target_id, favorited=favorited)
 
 
+async def remove_favorite(
+    db: AsyncIOMotorDatabase,
+    me_id: str,
+    target_id: str,
+) -> None:
+    if not ObjectId.is_valid(me_id):
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    if not ObjectId.is_valid(target_id):
+        raise HTTPException(status_code=422, detail="Invalid user ID format")
+    await user_repo.remove_favorite(db, ObjectId(me_id), ObjectId(target_id))
+
+
 async def get_favorites(
     db: AsyncIOMotorDatabase,
     me_id: str,
