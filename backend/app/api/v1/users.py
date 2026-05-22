@@ -6,7 +6,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.core.db import db_dependency
 from app.core.deps import get_current_user_id
 from app.models.team import TeamResponse
-from app.models.user import RoleName, UpdateProfileRequest, UserPublicResponse
+from app.models.user import FavoriteToggleResponse, RoleName, UpdateProfileRequest, UserPublicResponse
 from app.services import team as team_service
 from app.services import user as user_service
 
@@ -52,6 +52,15 @@ async def upload_cover(
     return await user_service.upload_cover(db, current_user_id, file)
 
 
+@router.get("/me/favorites", response_model=list[UserPublicResponse], summary="Get current user's favorite people")
+async def get_my_favorites(
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+) -> list[UserPublicResponse]:
+    """Return all users that the current user has favorited."""
+    return await user_service.get_favorites(db, current_user_id)
+
+
 @router.get("", response_model=list[UserPublicResponse], summary="List users")
 async def list_users(
     role: Optional[RoleName] = None,
@@ -69,6 +78,16 @@ async def get_user_teams(
 ) -> list[TeamResponse]:
     """Return all teams where user_id appears in member_ids, newest first."""
     return await team_service.get_user_teams(db, user_id)
+
+
+@router.post("/{user_id}/favorite", response_model=FavoriteToggleResponse, summary="Toggle favorite on a user")
+async def toggle_favorite(
+    user_id: str,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+) -> FavoriteToggleResponse:
+    """Toggle user_id in the current user's favorites. Returns favorited=true if now saved."""
+    return await user_service.toggle_favorite(db, current_user_id, user_id)
 
 
 @router.get("/{username}", response_model=UserPublicResponse, summary="Get user profile by username")

@@ -5,7 +5,7 @@ from bson import ObjectId
 from fastapi import HTTPException, UploadFile
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.models.user import UpdateProfileRequest, UserPublicResponse
+from app.models.user import FavoriteToggleResponse, UpdateProfileRequest, UserPublicResponse
 from app.repositories import user as user_repo
 
 _ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
@@ -86,6 +86,40 @@ async def update_profile(
     if not doc:
         raise HTTPException(status_code=404, detail="User not found")
     return UserPublicResponse.from_document(doc)
+
+
+async def toggle_favorite(
+    db: AsyncIOMotorDatabase,
+    me_id: str,
+    target_id: str,
+) -> FavoriteToggleResponse:
+    if not ObjectId.is_valid(me_id):
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    if not ObjectId.is_valid(target_id):
+        raise HTTPException(status_code=422, detail="Invalid user ID format")
+
+    me_oid = ObjectId(me_id)
+    target_oid = ObjectId(target_id)
+
+    if me_oid == target_oid:
+        raise HTTPException(status_code=422, detail="Cannot favorite yourself")
+
+    target = await user_repo.get_by_id(db, target_oid)
+    if not target:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    favorited = await user_repo.toggle_favorite(db, me_oid, target_oid)
+    return FavoriteToggleResponse(target_id=target_id, favorited=favorited)
+
+
+async def get_favorites(
+    db: AsyncIOMotorDatabase,
+    me_id: str,
+) -> list[UserPublicResponse]:
+    if not ObjectId.is_valid(me_id):
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    docs = await user_repo.get_favorites(db, ObjectId(me_id))
+    return [UserPublicResponse.from_document(d) for d in docs]
 
 
 async def _save_upload(file: UploadFile, subfolder: str) -> str:

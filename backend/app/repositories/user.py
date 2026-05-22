@@ -56,6 +56,33 @@ async def update_image(
     )
 
 
+async def toggle_favorite(
+    db: AsyncIOMotorDatabase,
+    me_id: ObjectId,
+    target_id: ObjectId,
+) -> bool:
+    """Toggle target_id in favorite_ids. Returns True if now favorited."""
+    user = await db["users"].find_one({"_id": me_id}, {"favorite_ids": 1})
+    current = user.get("favorite_ids", []) if user else []
+    if target_id in current:
+        await db["users"].update_one({"_id": me_id}, {"$pull": {"favorite_ids": target_id}})
+        return False
+    else:
+        await db["users"].update_one({"_id": me_id}, {"$addToSet": {"favorite_ids": target_id}})
+        return True
+
+
+async def get_favorites(
+    db: AsyncIOMotorDatabase,
+    me_id: ObjectId,
+) -> list[dict]:
+    user = await db["users"].find_one({"_id": me_id}, {"favorite_ids": 1})
+    if not user or not user.get("favorite_ids"):
+        return []
+    cursor = db["users"].find({"_id": {"$in": user["favorite_ids"]}}, _SAFE_PROJECTION)
+    return await cursor.to_list(length=None)
+
+
 async def update_profile(
     db: AsyncIOMotorDatabase,
     user_id: ObjectId,

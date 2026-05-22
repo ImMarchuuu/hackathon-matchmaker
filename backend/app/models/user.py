@@ -100,6 +100,11 @@ class AddPortfolioRequest(BaseModel):
 
 # ─── API response models ──────────────────────────────────────────────────────
 
+class FavoriteToggleResponse(BaseModel):
+    target_id: str
+    favorited: bool
+
+
 class UserPublicResponse(BaseModel):
     """Safe to return — no password_hash, no oauth tokens."""
     model_config = ConfigDict(arbitrary_types_allowed=True, populate_by_name=True)
