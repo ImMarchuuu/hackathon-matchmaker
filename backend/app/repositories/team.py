@@ -21,6 +21,11 @@ async def get_by_id(db: AsyncIOMotorDatabase, team_id: ObjectId) -> dict | None:
     return await db["teams"].find_one({"_id": team_id})
 
 
+async def get_by_member(db: AsyncIOMotorDatabase, user_id: ObjectId) -> list[dict]:
+    cursor = db["teams"].find({"member_ids": user_id}).sort("created_at", -1)
+    return await cursor.to_list(length=None)
+
+
 async def create(db: AsyncIOMotorDatabase, doc: dict) -> dict:
     result = await db["teams"].insert_one(doc)
     return await db["teams"].find_one({"_id": result.inserted_id})

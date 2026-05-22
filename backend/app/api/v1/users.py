@@ -5,7 +5,9 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.db import db_dependency
 from app.core.deps import get_current_user_id
+from app.models.team import TeamResponse
 from app.models.user import RoleName, UpdateProfileRequest, UserPublicResponse
+from app.services import team as team_service
 from app.services import user as user_service
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -58,6 +60,15 @@ async def list_users(
 ) -> list[UserPublicResponse]:
     """Return all users, optionally filtered by role or skill name."""
     return await user_service.list_users(db, role=role, skill=skill)
+
+
+@router.get("/{user_id}/teams", response_model=list[TeamResponse], summary="Get teams a user is a member of")
+async def get_user_teams(
+    user_id: str,
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+) -> list[TeamResponse]:
+    """Return all teams where user_id appears in member_ids, newest first."""
+    return await team_service.get_user_teams(db, user_id)
 
 
 @router.get("/{username}", response_model=UserPublicResponse, summary="Get user profile by username")

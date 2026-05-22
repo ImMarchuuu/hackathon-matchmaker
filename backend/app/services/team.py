@@ -53,6 +53,16 @@ async def create_team(
     return TeamResponse.from_document(inserted)
 
 
+async def get_user_teams(
+    db: AsyncIOMotorDatabase,
+    user_id: str,
+) -> list[TeamResponse]:
+    if not ObjectId.is_valid(user_id):
+        raise HTTPException(status_code=422, detail="Invalid user ID format")
+    docs = await team_repo.get_by_member(db, ObjectId(user_id))
+    return [TeamResponse.from_document(d) for d in docs]
+
+
 async def list_teams(
     db: AsyncIOMotorDatabase,
     *,
