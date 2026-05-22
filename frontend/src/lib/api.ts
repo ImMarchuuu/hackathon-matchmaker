@@ -18,7 +18,7 @@ export async function apiFetch<T>(
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-  const data = await res.json();
+  const data = res.status === 204 ? null : await res.json();
 
   if (!res.ok) {
     const message = data?.detail ?? `Request failed (${res.status})`;
