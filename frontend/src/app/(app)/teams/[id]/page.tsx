@@ -59,7 +59,7 @@ export default function TeamDetailPage({ params }: { params: { id: string } }) {
 
       {/* ── Main Card ── */}
       <div className="w-full max-w-4xl bg-white rounded-[2rem] shadow-sm p-6 sm:p-10 border border-gray-100 flex flex-col gap-8">
-        
+
         {/* ── Top Info Section ── */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
           <div className="flex items-center gap-6">
@@ -88,7 +88,7 @@ export default function TeamDetailPage({ params }: { params: { id: string } }) {
         {team.description && (
           <div className="flex flex-col gap-3">
             <div className="flex items-center gap-2 text-[#1b3168]">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z" /></svg>
               <h3 className="font-extrabold text-sm tracking-wide">Description</h3>
             </div>
             <div className="bg-slate-50 text-gray-600 text-sm leading-relaxed p-5 rounded-2xl border border-gray-100">
@@ -101,11 +101,11 @@ export default function TeamDetailPage({ params }: { params: { id: string } }) {
 
         {/* ── Tags and Members (Side by Side on Desktop) ── */}
         <div className="flex flex-col md:flex-row gap-8">
-          
+
           {/* Left: Tags */}
           <div className="flex-1 flex flex-col gap-6">
             <div className="flex items-center gap-2 text-[#1b3168]">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
               <h3 className="font-extrabold text-sm tracking-wide">Role & Skill Tags</h3>
             </div>
 
@@ -153,7 +153,7 @@ export default function TeamDetailPage({ params }: { params: { id: string } }) {
           {/* Right: Detailed Members */}
           <div className="flex-1 flex flex-col gap-4">
             <div className="flex items-center gap-2 text-[#1b3168]">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
               <h3 className="font-extrabold text-sm tracking-wide">Member {team.currentMemberIds.length}/{team.maxMembers}</h3>
             </div>
             <div className="flex flex-col gap-2 bg-gray-50/50 p-3 rounded-2xl border border-gray-100">
@@ -192,18 +192,17 @@ export default function TeamDetailPage({ params }: { params: { id: string } }) {
 
         {/* ── Bottom Action ── */}
         <div className="flex justify-end mt-4">
-          <button 
+          <button
             onClick={() => {
               if (team.status === "IN_PROGRESS") {
                 setIsReviewModalOpen(true);
               }
             }}
             disabled={team.status !== "IN_PROGRESS"}
-            className={`font-bold text-sm px-8 py-3 rounded-full shadow-md transition-colors tracking-wide ${
-              team.status === "IN_PROGRESS" 
-                ? "bg-red-500 hover:bg-red-600 text-white cursor-pointer" 
+            className={`font-bold text-sm px-8 py-3 rounded-full shadow-md transition-colors tracking-wide ${team.status === "IN_PROGRESS"
+                ? "bg-red-500 hover:bg-red-600 text-white cursor-pointer"
                 : "bg-red-400 text-white/80 opacity-50 cursor-not-allowed"
-            }`}
+              }`}
           >
             จบการแข่งขัน
           </button>
@@ -215,9 +214,9 @@ export default function TeamDetailPage({ params }: { params: { id: string } }) {
       {isReviewModalOpen && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl w-full max-w-md relative p-6 sm:p-8 shadow-2xl overflow-hidden flex flex-col">
-            
+
             {/* Close Button */}
-            <button 
+            <button
               onClick={() => setIsReviewModalOpen(false)}
               className="absolute top-4 right-4 w-8 h-8 rounded-full border-2 border-red-500 text-red-500 flex items-center justify-center hover:bg-red-50 transition-colors"
             >
@@ -240,7 +239,7 @@ export default function TeamDetailPage({ params }: { params: { id: string } }) {
 
                   return (
                     <div key={memberId} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl border border-gray-100 bg-gray-50/50">
-                      
+
                       <div className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 border border-gray-200">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -257,7 +256,7 @@ export default function TeamDetailPage({ params }: { params: { id: string } }) {
                       {/* Stars */}
                       <div className="flex items-center gap-1 self-end sm:self-auto">
                         {[1, 2, 3, 4, 5].map((star) => (
-                          <button 
+                          <button
                             key={star}
                             onClick={() => handleRating(memberId, star)}
                             className={`w-6 h-6 transition-colors ${star <= currentRating ? "text-yellow-400" : "text-gray-300 hover:text-yellow-200"}`}
@@ -278,14 +277,13 @@ export default function TeamDetailPage({ params }: { params: { id: string } }) {
             </div>
 
             {/* Confirm Button */}
-            <button 
+            <button
               onClick={handleSubmitReview}
               disabled={!allRated}
-              className={`mt-6 w-full py-3.5 rounded-full font-bold tracking-wide transition-all ${
-                allRated 
-                  ? "bg-[#1b3168] hover:bg-[#12224f] text-white shadow-md" 
+              className={`mt-6 w-full py-3.5 rounded-full font-bold tracking-wide transition-all ${allRated
+                  ? "bg-[#1b3168] hover:bg-[#12224f] text-white shadow-md"
                   : "bg-gray-200 text-gray-400 cursor-not-allowed"
-              }`}
+                }`}
             >
               ยืนยัน
             </button>

@@ -66,11 +66,10 @@ export default function FindTeamPage() {
 
         <button
           onClick={() => setIsFilterOpen(!isFilterOpen)}
-          className={`p-3 rounded-[1rem] border text-[#1b3168] hover:bg-gray-50 transition-colors shadow-sm shrink-0 ${
-            activeFilters.length > 0
+          className={`p-3 rounded-[1rem] border text-[#1b3168] hover:bg-gray-50 transition-colors shadow-sm shrink-0 ${activeFilters.length > 0
               ? "bg-[#1b3168] text-white border-[#1b3168] hover:bg-[#12224f]"
               : "bg-white border-gray-200"
-          }`}
+            }`}
           aria-label="Toggle filter panel"
         >
           <svg className={`w-5 h-5 ${activeFilters.length > 0 ? "text-white" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
@@ -102,11 +101,10 @@ export default function FindTeamPage() {
               <button
                 key={tag}
                 onClick={() => toggleFilter(tag)}
-                className={`px-4 py-2 rounded-full border text-sm font-semibold transition-colors ${
-                  activeFilters.includes(tag)
+                className={`px-4 py-2 rounded-full border text-sm font-semibold transition-colors ${activeFilters.includes(tag)
                     ? "bg-[#1b3168] text-white border-[#1b3168]"
                     : "border-gray-200 text-gray-600 hover:bg-[#1b3168] hover:text-white hover:border-[#1b3168]"
-                }`}
+                  }`}
               >
                 {tag}
               </button>
@@ -120,17 +118,15 @@ export default function FindTeamPage() {
         <div className="flex bg-[#EAEAEA] rounded-xl p-1 shrink-0 w-full max-w-[280px]">
           <button
             onClick={() => setActiveTab("team")}
-            className={`flex-1 py-2.5 rounded-lg text-xs font-black tracking-widest transition-all ${
-              activeTab === "team" ? "bg-[#1b3168] text-white shadow-sm" : "text-gray-500 hover:text-gray-700"
-            }`}
+            className={`flex-1 py-2.5 rounded-lg text-xs font-black tracking-widest transition-all ${activeTab === "team" ? "bg-[#1b3168] text-white shadow-sm" : "text-gray-500 hover:text-gray-700"
+              }`}
           >
             TEAM
           </button>
           <button
             onClick={() => setActiveTab("people")}
-            className={`flex-1 py-2.5 rounded-lg text-xs font-black tracking-widest transition-all ${
-              activeTab === "people" ? "bg-[#1b3168] text-white shadow-sm" : "text-gray-500 hover:text-gray-700"
-            }`}
+            className={`flex-1 py-2.5 rounded-lg text-xs font-black tracking-widest transition-all ${activeTab === "people" ? "bg-[#1b3168] text-white shadow-sm" : "text-gray-500 hover:text-gray-700"
+              }`}
           >
             PEOPLE
           </button>

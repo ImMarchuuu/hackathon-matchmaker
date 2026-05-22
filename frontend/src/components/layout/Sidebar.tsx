@@ -235,6 +235,14 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
               </Link>
             </div>
           </div>
+          {/* SETTINGS */}
+          <div className="border-b border-gray-50 py-2">
+            <div className="flex items-center px-2 py-3">
+              <Link href="/settings" onClick={onClose} className="text-[#1b3168] font-black tracking-wider uppercase text-sm hover:text-[#2c52ed]">
+                SETTINGS
+              </Link>
+            </div>
+          </div>
         </nav>
 
         {/* ── Log out ── */}
@@ -245,9 +253,9 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
               window.location.href = "/login";
               onClose?.();
             }}
-            className="flex items-center gap-3 w-full font-bold text-red-500 hover:text-red-600 transition-colors"
+            className="flex items-center justify-center gap-2 border border-red-500 rounded-full px-6 py-2.5 w-full max-w-[80%] mx-auto font-bold text-red-500 hover:bg-red-500 hover:text-white active:bg-red-600 active:text-white transition-all duration-200"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
             Log out

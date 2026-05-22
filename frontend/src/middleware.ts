@@ -12,7 +12,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  if ((pathname === '/' || pathname === '/login' || pathname === '/signup') && authCookie) {
+  if ((pathname === '/' || pathname === '/login' || pathname === '/signup' || pathname === '/otp') && authCookie) {
     return NextResponse.redirect(new URL('/find-team', request.url));
   }
 

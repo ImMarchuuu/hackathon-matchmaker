@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
 import type { AuthResponse, SignupPayload } from "@/types/auth";
 
+
 export default function SignupPage() {
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
