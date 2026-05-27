@@ -10,7 +10,9 @@ import ActiveTeamSection from "@/components/profile/ActiveTeamSection";
 import { apiFetch } from "@/lib/api";
 import type { ApiUser } from "@/types/profile";
 import type { ApiTeam } from "@/types/team";
+import type { ApiRankSummary } from "@/types/skill";
 import type { CompactActiveTeam } from "@/components/profile/CompactActiveCard";
+import type { RoleWithRank } from "@/components/profile/MyRoleSection";
 
 export default function DynamicProfilePage({ params }: { params: { id: string } }) {
   const username = params.id;
@@ -18,6 +20,7 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
   const [user, setUser] = useState<ApiUser | null>(null);
   const [me, setMe] = useState<ApiUser | null>(null);
   const [teams, setTeams] = useState<CompactActiveTeam[]>([]);
+  const [rankSummary, setRankSummary] = useState<ApiRankSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [missing, setMissing] = useState(false);
 
@@ -37,7 +40,7 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
       .then(([profile, currentUser]) => {
         setUser(profile);
         setMe(currentUser);
-        // fetch teams for this profile using their _id
+        // non-critical secondary fetches — fail silently
         apiFetch<ApiTeam[]>(`/api/v1/users/${profile._id}/teams`)
           .then((apiTeams) =>
             setTeams(
@@ -52,7 +55,11 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
               }))
             )
           )
-          .catch(() => {}); // teams are non-critical — fail silently
+          .catch(() => {});
+
+        apiFetch<ApiRankSummary>(`/api/v1/users/${profile._id}/rank-summary`)
+          .then(setRankSummary)
+          .catch(() => {});
       })
       .catch(() => setMissing(true))
       .finally(() => setLoading(false));
@@ -70,12 +77,14 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
 
   const isCurrentUser = !!me && me._id === user._id;
 
-  // Transform API shape → component props
-  const roles = user.role.map((r) => r.name);
-  const skills = user.skills.map((s) => ({
-    name: s.name,
-    rank: s.rank_title.toLowerCase(),
-  }));
+  // Prefer live rank-summary data; fall back to stored user fields
+  const roles: RoleWithRank[] = rankSummary
+    ? rankSummary.roles.map((r) => ({ name: r.name, rank_title: r.rank_title }))
+    : user.role.map((r) => ({ name: r.name, rank_title: r.rank_title }));
+
+  const skills = rankSummary
+    ? rankSummary.skills.map((s) => ({ name: s.name, rank: s.rank_title.toLowerCase() }))
+    : user.skills.map((s) => ({ name: s.name, rank: s.rank_title.toLowerCase() }));
 
 
   return (
