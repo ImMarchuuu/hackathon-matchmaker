@@ -9,14 +9,25 @@ import CompetitionSection from "@/components/profile/CompetitionSection";
 import ActiveTeamSection from "@/components/profile/ActiveTeamSection";
 import { apiFetch } from "@/lib/api";
 import type { ApiUser } from "@/types/profile";
+import type { ApiTeam } from "@/types/team";
+import type { CompactActiveTeam } from "@/components/profile/CompactActiveCard";
 
 export default function DynamicProfilePage({ params }: { params: { id: string } }) {
   const username = params.id;
 
   const [user, setUser] = useState<ApiUser | null>(null);
   const [me, setMe] = useState<ApiUser | null>(null);
+  const [teams, setTeams] = useState<CompactActiveTeam[]>([]);
   const [loading, setLoading] = useState(true);
   const [missing, setMissing] = useState(false);
+
+  function fmt(d: string) {
+    return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  }
+
+  function daysLeft(end: string) {
+    return Math.max(0, Math.ceil((new Date(end).getTime() - Date.now()) / 86_400_000));
+  }
 
   useEffect(() => {
     Promise.all([
@@ -26,6 +37,22 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
       .then(([profile, currentUser]) => {
         setUser(profile);
         setMe(currentUser);
+        // fetch teams for this profile using their _id
+        apiFetch<ApiTeam[]>(`/api/v1/users/${profile._id}/teams`)
+          .then((apiTeams) =>
+            setTeams(
+              apiTeams.map((t) => ({
+                id: t._id,
+                teamName: t.title,
+                dateRange: `${fmt(t.start_date)} – ${fmt(t.end_date)}`,
+                daysLeft: daysLeft(t.end_date),
+                currentMembers: t.member_ids.length,
+                maxMembers: t.max_members,
+                status: t.status,
+              }))
+            )
+          )
+          .catch(() => {}); // teams are non-critical — fail silently
       })
       .catch(() => setMissing(true))
       .finally(() => setLoading(false));
@@ -50,15 +77,6 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
     rank: s.rank_title.toLowerCase(),
   }));
 
-  // TODO: fetch real active teams from /api/v1/teams when that endpoint supports member filtering
-  const activeTeams: {
-    id: string;
-    teamName: string;
-    dateRange: string;
-    daysLeft: number;
-    currentMembers: number;
-    maxMembers: number;
-  }[] = [];
 
   return (
     <div className="w-full min-h-screen bg-[#f4f6f8] py-0 px-0 sm:py-8 sm:px-6">
@@ -190,7 +208,7 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
 
           {/* Section 8: Active Team */}
           <div className="w-full pb-4 mt-4">
-            <ActiveTeamSection teams={activeTeams} />
+            <ActiveTeamSection teams={teams} />
           </div>
 
         </div>

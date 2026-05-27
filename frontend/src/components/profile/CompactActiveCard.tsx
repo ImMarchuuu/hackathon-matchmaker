@@ -7,6 +7,7 @@ export interface CompactActiveTeam {
   daysLeft: number;
   currentMembers: number;
   maxMembers: number;
+  status: "WAITING" | "IN_PROGRESS";
 }
 
 export default function CompactActiveCard({
@@ -15,6 +16,7 @@ export default function CompactActiveCard({
   daysLeft,
   currentMembers,
   maxMembers,
+  status,
 }: CompactActiveTeam) {
   return (
     <div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm p-6 flex flex-col gap-2 hover:shadow-md transition-shadow">
@@ -42,9 +44,13 @@ export default function CompactActiveCard({
 
       {/* ── Bottom Row: Status badge + member count ── */}
       <div className="flex items-center justify-between mt-auto pt-2">
-        {/* Status badge — golden/bronze */}
-        <div className="bg-[#FBBF24] text-[#ffff] font-extrabold text-sm px-5 py-2 rounded-full shadow-sm tracking-wide whitespace-nowrap">
-          กำลังร่วมทีม
+        {/* Status badge */}
+        <div className={`font-extrabold text-sm px-5 py-2 rounded-full shadow-sm tracking-wide whitespace-nowrap ${
+          status === "IN_PROGRESS"
+            ? "bg-[#FBBF24] text-white"
+            : "bg-orange-100 text-orange-600"
+        }`}>
+          {status === "IN_PROGRESS" ? "กำลังร่วมทีม" : "รอเริ่ม"}
         </div>
 
         {/* Member count */}
