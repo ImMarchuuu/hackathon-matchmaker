@@ -32,8 +32,8 @@ export default function SettingsPage() {
   }, [router]);
 
   return (
-    <div className="w-full min-h-screen py-8 px-4 sm:px-6 flex flex-col items-center relative">
-      <div className="w-full max-w-3xl bg-white rounded-[2rem] shadow-sm p-6 sm:p-10 border border-gray-100 flex flex-col">
+    <div className="w-full pb-12">
+      <div className="max-w-3xl mx-auto bg-white rounded-[2rem] shadow-sm p-6 sm:p-10 border border-gray-100 flex flex-col">
 
         {/* ── Section 1: บัญชีและการเชื่อมต่อ ── */}
         <div className="flex flex-col gap-6">
