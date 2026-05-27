@@ -7,9 +7,10 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.core.db import db_dependency, redis_dependency
 from app.core.deps import get_current_user_id
 from app.models.team import TeamResponse
-from app.models.user import FavoriteToggleResponse, RoleName, UpdateProfileRequest, UserPublicResponse
+from app.models.user import FavoriteToggleResponse, RankSummaryResponse, RoleName, UpdateProfileRequest, UserPublicResponse
 from app.services import team as team_service
 from app.services import user as user_service
+from app.services.rank import get_rank_summary
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -90,6 +91,22 @@ async def remove_favorite(
 ) -> None:
     """Remove user_id from current user's favorites. Idempotent — no error if not saved."""
     await user_service.remove_favorite(db, current_user_id, user_id)
+
+
+@router.get("/{user_id}/rank-summary", response_model=RankSummaryResponse, summary="Get skill & role rank summary")
+async def get_user_rank_summary(
+    user_id: str,
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+    redis: aioredis.Redis = Depends(redis_dependency),
+) -> RankSummaryResponse:
+    """
+    Return live-computed rank data for the given user:
+    skill ranks with within-tier progress, role ranks, overall rank,
+    and behavioral_rates (soft skill score).
+    Thresholds are read from Redis so changes take effect without redeployment.
+    """
+    data = await get_rank_summary(db, redis, user_id)
+    return RankSummaryResponse(**data)
 
 
 @router.post("/{user_id}/favorite", response_model=FavoriteToggleResponse, summary="Toggle favorite on a user")

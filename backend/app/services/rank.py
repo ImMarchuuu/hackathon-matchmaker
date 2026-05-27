@@ -1,5 +1,5 @@
 """
-Shared rank calculator service.
+Shared rank calculator and rank-summary service.
 
 Tier mapping:
   Bronze  (1) — project_count < silver threshold
@@ -16,6 +16,9 @@ import logging
 from typing import TypedDict
 
 import redis.asyncio as aioredis
+from bson import ObjectId
+from fastapi import HTTPException
+from motor.motor_asyncio import AsyncIOMotorDatabase
 
 logger = logging.getLogger(__name__)
 
@@ -122,3 +125,102 @@ async def rank_overall_for_entries(
             best = result
 
     return best["rank_title"]
+
+
+def _progress_within_tier(
+    project_count: int,
+    thresholds: dict[str, int],
+) -> tuple[int, int, bool]:
+    """
+    Return (progress_current, progress_total, is_max) for the progress bar
+    within the current tier.
+
+    Examples (defaults: silver=2, gold=5, diamond=10):
+      count=1  → Bronze  → (1, 2, False)   — 1 of 2 towards Silver
+      count=3  → Silver  → (1, 3, False)   — 1 of 3 towards Gold
+      count=7  → Gold    → (2, 5, False)   — 2 of 5 towards Diamond
+      count=12 → Diamond → (12, 12, True)  — max rank
+    """
+    silver  = thresholds.get("silver",  _DEFAULTS["silver"])
+    gold    = thresholds.get("gold",    _DEFAULTS["gold"])
+    diamond = thresholds.get("diamond", _DEFAULTS["diamond"])
+
+    if project_count >= diamond:
+        return (project_count, project_count, True)
+    if project_count >= gold:
+        return (project_count - gold, diamond - gold, False)
+    if project_count >= silver:
+        return (project_count - silver, gold - silver, False)
+    # Bronze
+    return (project_count, silver, False)
+
+
+async def get_rank_summary(
+    db: AsyncIOMotorDatabase,
+    redis: aioredis.Redis,
+    user_id: str,
+) -> dict:
+    """
+    Build the full rank summary for a user:
+      - live-computed tier + within-tier progress for every skill
+      - live-computed tier for every role
+      - rank_overall derived from skills
+      - behavioral_rates (soft skill score)
+
+    Raises 422 on bad ID, 404 when user not found.
+    """
+    from app.repositories import user as user_repo  # local import to avoid circular
+
+    if not ObjectId.is_valid(user_id):
+        raise HTTPException(status_code=422, detail="Invalid user ID format")
+
+    doc = await user_repo.get_by_id(db, ObjectId(user_id))
+    if not doc:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Read thresholds once — reuse for all entries
+    thresholds = await _get_thresholds(redis)
+
+    # ── Skills ──────────────────────────────────────────────────────────────
+    skill_entries = []
+    for s in doc.get("skills", []):
+        count = s.get("project_count", 0)
+        rank  = _compute(count, thresholds)
+        cur, total, is_max = _progress_within_tier(count, thresholds)
+        skill_entries.append({
+            "name":             s["name"],
+            "project_count":    count,
+            "tier":             rank["tier"],
+            "rank_title":       rank["rank_title"],
+            "progress_current": cur,
+            "progress_total":   total,
+            "is_max":           is_max,
+        })
+
+    # ── Roles ───────────────────────────────────────────────────────────────
+    role_entries = []
+    for r in doc.get("role", []):
+        count = r.get("project_count", 0)
+        rank  = _compute(count, thresholds)
+        role_entries.append({
+            "name":          r["name"],
+            "project_count": count,
+            "tier":          rank["tier"],
+            "rank_title":    rank["rank_title"],
+        })
+
+    # ── Overall rank (best skill tier) ──────────────────────────────────────
+    if skill_entries:
+        best_tier = max(s["tier"] for s in skill_entries)
+        rank_overall = next(
+            s["rank_title"] for s in skill_entries if s["tier"] == best_tier
+        )
+    else:
+        rank_overall = "Bronze"
+
+    return {
+        "rank_overall":    rank_overall,
+        "skills":          skill_entries,
+        "roles":           role_entries,
+        "behavioral_rates": doc.get("behavioral_rates", 0.0),
+    }

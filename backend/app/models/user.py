@@ -100,6 +100,33 @@ class AddPortfolioRequest(BaseModel):
 
 # ─── API response models ──────────────────────────────────────────────────────
 
+class SkillRankEntry(BaseModel):
+    """Single skill with live-computed rank and within-tier progress."""
+    name: str
+    project_count: int
+    tier: int
+    rank_title: str
+    progress_current: int   # projects accumulated within current tier
+    progress_total: int     # projects needed to fill current tier (−1 when max)
+    is_max: bool            # True when Diamond and no further tier exists
+
+
+class RoleRankEntry(BaseModel):
+    """Single role with live-computed rank."""
+    name: str
+    project_count: int
+    tier: int
+    rank_title: str
+
+
+class RankSummaryResponse(BaseModel):
+    """Aggregated rank data for the skill-bank and profile pages."""
+    rank_overall: str
+    skills: list[SkillRankEntry]
+    roles: list[RoleRankEntry]
+    behavioral_rates: float
+
+
 class FavoriteToggleResponse(BaseModel):
     target_id: str
     favorited: bool
