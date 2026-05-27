@@ -1,9 +1,10 @@
 from typing import Optional
 
+import redis.asyncio as aioredis
 from fastapi import APIRouter, Depends, File, UploadFile
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.core.db import db_dependency
+from app.core.db import db_dependency, redis_dependency
 from app.core.deps import get_current_user_id
 from app.models.team import TeamResponse
 from app.models.user import FavoriteToggleResponse, RoleName, UpdateProfileRequest, UserPublicResponse
@@ -27,9 +28,10 @@ async def update_me(
     payload: UpdateProfileRequest,
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncIOMotorDatabase = Depends(db_dependency),
+    redis: aioredis.Redis = Depends(redis_dependency),
 ) -> UserPublicResponse:
     """Update mutable profile fields for the currently authenticated user."""
-    return await user_service.update_profile(db, current_user_id, payload)
+    return await user_service.update_profile(db, current_user_id, payload, redis)
 
 
 @router.post("/me/avatar", response_model=UserPublicResponse, summary="Upload profile avatar")

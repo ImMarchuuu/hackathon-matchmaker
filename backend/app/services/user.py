@@ -1,12 +1,14 @@
 import uuid
 from pathlib import Path
 
+import redis.asyncio as aioredis
 from bson import ObjectId
 from fastapi import HTTPException, UploadFile
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.models.user import FavoriteToggleResponse, UpdateProfileRequest, UserPublicResponse
 from app.repositories import user as user_repo
+from app.services.rank import rank_for_count, rank_overall_for_entries
 
 _ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 _MAX_IMAGE_BYTES = 5 * 1024 * 1024  # 5 MB
@@ -49,6 +51,7 @@ async def update_profile(
     db: AsyncIOMotorDatabase,
     user_id: str,
     payload: UpdateProfileRequest,
+    redis: aioredis.Redis | None = None,
 ) -> UserPublicResponse:
     if not ObjectId.is_valid(user_id):
         raise HTTPException(status_code=401, detail="Invalid token payload")
@@ -74,13 +77,23 @@ async def update_profile(
             if role_name in existing:
                 merged.append(existing[role_name])
             else:
+                # New role — compute rank from 0 projects via shared calculator
+                rank = (
+                    await rank_for_count(redis, 0)
+                    if redis
+                    else {"tier": 1, "rank_title": "Bronze"}
+                )
                 merged.append({
                     "name": role_name,
-                    "tier": 1,
                     "project_count": 0,
-                    "rank_title": "Bronze",
+                    "tier": rank["tier"],
+                    "rank_title": rank["rank_title"],
                 })
         fields["role"] = merged
+
+        # Recompute rank_overall from all roles
+        if redis:
+            fields["rank_overall"] = await rank_overall_for_entries(redis, merged)
 
     doc = await user_repo.update_profile(db, oid, fields)
     if not doc:

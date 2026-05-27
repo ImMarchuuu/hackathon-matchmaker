@@ -7,12 +7,14 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
-from app.core.db import close_db_connections, init_db_connections
+from app.core.db import close_db_connections, get_redis, init_db_connections
+from app.services.rank import seed_thresholds
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db_connections()
+    await seed_thresholds(get_redis())
     yield
     await close_db_connections()
 
