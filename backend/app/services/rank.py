@@ -276,13 +276,12 @@ async def recompute_from_competitions(
         })
 
     # ── Rebuild skill entries ─────────────────────────────────────────────────
-    existing_skills = {s["name"]: s for s in doc.get("skills", [])}
-
-    all_skill_names = set(existing_skills) | set(skill_counts)
+    # Skills are purely competition-derived — only skills that appear in at
+    # least one competition are kept. Removing a skill from all competitions
+    # removes it from the profile entirely.
     new_skills = []
-    for name in all_skill_names:
-        count = skill_counts.get(name, existing_skills.get(name, {}).get("project_count", 0))
-        rank  = _compute(count, thresholds)
+    for name, count in skill_counts.items():
+        rank = _compute(count, thresholds)
         new_skills.append({
             "name":          name,
             "project_count": count,
