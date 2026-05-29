@@ -1,60 +1,161 @@
-import React from "react";
-import { AnchorIcon } from "@/components/Icons";
+"use client";
 
-export interface CompetitionItem {
-  name: string;
-  date: string;
-}
+import { useState } from "react";
+import type { ApiCompetitionExperience, ApiUser } from "@/types/profile";
+import { apiFetch } from "@/lib/api";
+import CompetitionModal from "./CompetitionModal";
+
+const ROLE_COLORS: Record<string, string> = {
+  "Developer":     "bg-blue-100 text-blue-700",
+  "Business":      "bg-green-100 text-green-700",
+  "UI/UX Designer":"bg-purple-100 text-purple-700",
+  "Marketing":     "bg-orange-100 text-orange-700",
+  "AI / Data":     "bg-yellow-100 text-yellow-700",
+  "Pitching":      "bg-red-100 text-red-700",
+};
 
 interface CompetitionSectionProps {
-  competitions?: CompetitionItem[];
+  competitions: ApiCompetitionExperience[];
+  allUsers: ApiUser[];
+  isCurrentUser: boolean;
+  onUpdated: (entries: ApiCompetitionExperience[]) => void;
 }
 
-export default function CompetitionSection({ competitions = [] }: CompetitionSectionProps) {
+export default function CompetitionSection({
+  competitions,
+  allUsers,
+  isCurrentUser,
+  onUpdated,
+}: CompetitionSectionProps) {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const userMap = Object.fromEntries(allUsers.map((u) => [u._id, u]));
+
+  async function handleDelete(comp_id: string) {
+    setDeletingId(comp_id);
+    try {
+      const updated = await apiFetch<{ competition_experiences: ApiCompetitionExperience[] }>(
+        `/api/v1/users/me/competitions/${comp_id}`,
+        { method: "DELETE" }
+      );
+      onUpdated(updated.competition_experiences ?? []);
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   return (
-    <section className="relative rounded-[2rem] border border-gray-200 bg-[#cceaff] p-8 sm:p-12 pt-16 w-full shadow-sm mt-8">
-      {/* Absolute centered title pill overlapping top border */}
-      <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-white border border-gray-200 px-8 py-2.5 rounded-full flex items-center gap-2 shadow-sm text-[#1b3168] font-bold text-sm tracking-widest uppercase">
-        <AnchorIcon className="w-4 h-4 text-[#1b3168]" />
-        COMPETITION
-      </div>
-
-      <div className="relative w-full max-w-3xl mx-auto py-8 min-h-[300px]">
-        {/* Vertical Dashed Line */}
-        <div className="absolute left-1/2 top-0 bottom-0 w-[3px] border-l-[3px] border-dashed border-[#1b3168]/60 -translate-x-1/2"></div>
-
-        {competitions.length > 0 ? (
-          <div className="flex flex-col gap-16 relative w-full">
-            {competitions.map((event, index) => {
-              const isLeft = index % 2 === 0;
-              return (
-                <div key={index} className="relative flex items-center w-full">
-                  {/* Icon on the line */}
-                  <div className="absolute left-1/2 -translate-x-1/2 w-8 h-8 flex items-center justify-center bg-[#cceaff] z-10">
-                    {index === 0 ? (
-                      <span className="text-[#1b3168] text-2xl">⛵</span>
-                    ) : (
-                      <div className="w-5 h-5 rounded-full bg-[#1b3168]"></div>
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <div className={`w-1/2 flex flex-col ${isLeft ? 'items-end pr-8 sm:pr-16 text-right' : 'items-start pl-8 sm:pl-16 ml-auto text-left'}`}>
-                    <h4 className="font-extrabold text-[#1b3168] text-lg sm:text-xl">{event.name}</h4>
-                    <p className="text-xs sm:text-sm font-bold text-[#1b3168]/70 mt-1">{event.date}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full pt-10">
-            <p className="text-sm font-medium text-[#1b3168]/60 italic bg-white/50 px-6 py-2 rounded-full">
-              No competitions charted yet.
-            </p>
-          </div>
+    <section className="w-full">
+      {/* Section header */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <svg className="w-5 h-5 text-[#1b3168]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+          </svg>
+          <h2 className="text-lg font-extrabold text-[#1b3168] tracking-tight">Competition Experience</h2>
+        </div>
+        {isCurrentUser && (
+          <button
+            onClick={() => setModalOpen(true)}
+            className="flex items-center gap-1.5 px-5 py-2 rounded-full bg-[#1b3168] text-white text-xs font-bold hover:bg-[#12224f] transition-colors shadow-sm"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+            </svg>
+            Add Experience
+          </button>
         )}
       </div>
+
+      {/* Cards */}
+      {competitions.length > 0 ? (
+        <div className="flex flex-col gap-4">
+          {competitions.map((comp) => (
+            <div
+              key={comp.id}
+              className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 flex flex-col gap-3"
+            >
+              {/* Top row: name + role badge + delete */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                  <h3 className="font-extrabold text-[#1b3168] text-base leading-tight">{comp.competition_name}</h3>
+                  <span className={`shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${ROLE_COLORS[comp.role] ?? "bg-gray-100 text-gray-600"}`}>
+                    {comp.role}
+                  </span>
+                </div>
+                {isCurrentUser && (
+                  <button
+                    onClick={() => handleDelete(comp.id)}
+                    disabled={deletingId === comp.id}
+                    className="shrink-0 p-1.5 rounded-full hover:bg-red-50 text-gray-300 hover:text-red-400 transition-colors disabled:opacity-40"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+
+              {/* Detail */}
+              {comp.detail && (
+                <p className="text-sm text-gray-500 leading-relaxed">{comp.detail}</p>
+              )}
+
+              {/* Skills */}
+              {comp.skills.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {comp.skills.map((skill) => (
+                    <span key={skill} className="px-2.5 py-0.5 bg-gray-100 text-gray-600 text-xs font-semibold rounded-full">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Contributors */}
+              {comp.contributor_ids.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400 font-semibold shrink-0">Team:</span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {comp.contributor_ids.map((id) => {
+                      const u = userMap[id];
+                      if (!u) return null;
+                      return (
+                        <div key={id} className="flex items-center gap-1 bg-gray-50 border border-gray-100 rounded-full px-2 py-0.5">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={u.avatar_url ?? "/avatar.png"} alt={u.name} className="w-4 h-4 rounded-full object-cover" />
+                          <span className="text-xs font-semibold text-gray-700">{u.name}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center py-12 border border-dashed border-gray-200 rounded-2xl bg-gray-50">
+          <p className="text-sm text-gray-400 italic">No competition experience yet.</p>
+          {isCurrentUser && (
+            <button
+              onClick={() => setModalOpen(true)}
+              className="mt-3 px-5 py-2 rounded-full bg-[#1b3168] text-white text-xs font-bold hover:bg-[#12224f]"
+            >
+              Add your first experience
+            </button>
+          )}
+        </div>
+      )}
+
+      {modalOpen && (
+        <CompetitionModal
+          allUsers={allUsers}
+          onClose={() => setModalOpen(false)}
+          onAdded={onUpdated}
+        />
+      )}
     </section>
   );
 }

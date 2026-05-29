@@ -8,7 +8,7 @@ import SkillRankSection from "@/components/profile/SkillRankSection";
 import CompetitionSection from "@/components/profile/CompetitionSection";
 import ActiveTeamSection from "@/components/profile/ActiveTeamSection";
 import { apiFetch } from "@/lib/api";
-import type { ApiUser } from "@/types/profile";
+import type { ApiUser, ApiCompetitionExperience } from "@/types/profile";
 import type { ApiTeam } from "@/types/team";
 import type { ApiRankSummary } from "@/types/skill";
 import type { CompactActiveTeam } from "@/components/profile/CompactActiveCard";
@@ -19,6 +19,8 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
 
   const [user, setUser] = useState<ApiUser | null>(null);
   const [me, setMe] = useState<ApiUser | null>(null);
+  const [allUsers, setAllUsers] = useState<ApiUser[]>([]);
+  const [competitions, setCompetitions] = useState<ApiCompetitionExperience[]>([]);
   const [teams, setTeams] = useState<CompactActiveTeam[]>([]);
   const [rankSummary, setRankSummary] = useState<ApiRankSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,6 +42,8 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
       .then(([profile, currentUser]) => {
         setUser(profile);
         setMe(currentUser);
+        setCompetitions(profile.competition_experiences ?? []);
+
         // non-critical secondary fetches — fail silently
         apiFetch<ApiTeam[]>(`/api/v1/users/${profile._id}/teams`)
           .then((apiTeams) =>
@@ -59,6 +63,10 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
 
         apiFetch<ApiRankSummary>(`/api/v1/users/${profile._id}/rank-summary`)
           .then(setRankSummary)
+          .catch(() => {});
+
+        apiFetch<ApiUser[]>("/api/v1/users")
+          .then(setAllUsers)
           .catch(() => {});
       })
       .catch(() => setMissing(true))
@@ -85,7 +93,6 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
   const skills = rankSummary
     ? rankSummary.skills.map((s) => ({ name: s.name, rank: s.rank_title.toLowerCase() }))
     : user.skills.map((s) => ({ name: s.name, rank: s.rank_title.toLowerCase() }));
-
 
   return (
     <div className="w-full min-h-screen bg-[#f4f6f8] py-0 px-0 sm:py-8 sm:px-6">
@@ -204,15 +211,20 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
             </section>
           </div>
 
-          {/* Section 6: Role & Skills */}
-          <div className="w-full flex flex-col lg:flex-row gap-8 mt-12 pt-8 border-t border-gray-100">
-            <MyRoleSection roles={roles} />
-            <SkillRankSection skills={skills} />
+          {/* Section 6: Competition Experience (between personal details and role & skill) */}
+          <div className="w-full pt-8 border-t border-gray-100">
+            <CompetitionSection
+              competitions={competitions}
+              allUsers={allUsers}
+              isCurrentUser={isCurrentUser}
+              onUpdated={setCompetitions}
+            />
           </div>
 
-          {/* Section 7: Competition */}
-          <div className="w-full mt-4">
-            <CompetitionSection competitions={[]} />
+          {/* Section 7: Role & Skills */}
+          <div className="w-full flex flex-col lg:flex-row gap-8 pt-8 border-t border-gray-100">
+            <MyRoleSection roles={roles} />
+            <SkillRankSection skills={skills} />
           </div>
 
           {/* Section 8: Active Team */}

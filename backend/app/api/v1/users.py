@@ -7,7 +7,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.core.db import db_dependency, redis_dependency
 from app.core.deps import get_current_user_id
 from app.models.team import TeamResponse
-from app.models.user import FavoriteToggleResponse, RankSummaryResponse, RoleName, UpdateProfileRequest, UserPublicResponse
+from app.models.user import AddCompetitionRequest, FavoriteToggleResponse, RankSummaryResponse, RoleName, UpdateProfileRequest, UserPublicResponse
 from app.services import team as team_service
 from app.services import user as user_service
 from app.services.rank import get_rank_summary
@@ -53,6 +53,26 @@ async def upload_cover(
 ) -> UserPublicResponse:
     """Replace the current user's cover image. Accepts JPEG, PNG, WebP, GIF up to 5 MB."""
     return await user_service.upload_cover(db, current_user_id, file)
+
+
+@router.post("/me/competitions", response_model=UserPublicResponse, status_code=201, summary="Add a competition experience")
+async def add_competition(
+    payload: AddCompetitionRequest,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+) -> UserPublicResponse:
+    """Append a competition experience entry to the current user's profile."""
+    return await user_service.add_competition(db, current_user_id, payload)
+
+
+@router.delete("/me/competitions/{comp_id}", response_model=UserPublicResponse, summary="Remove a competition experience")
+async def remove_competition(
+    comp_id: str,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+) -> UserPublicResponse:
+    """Remove a competition experience entry by its id."""
+    return await user_service.remove_competition(db, current_user_id, comp_id)
 
 
 @router.get("/me/favorites", response_model=list[UserPublicResponse], summary="Get current user's favorite people")

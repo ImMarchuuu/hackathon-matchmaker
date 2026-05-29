@@ -56,6 +56,34 @@ async def update_image(
     )
 
 
+async def add_competition(
+    db: AsyncIOMotorDatabase,
+    user_id: ObjectId,
+    entry: dict,
+) -> dict | None:
+    from pymongo import ReturnDocument
+    return await db["users"].find_one_and_update(
+        {"_id": user_id},
+        {"$push": {"competition_experiences": entry}},
+        return_document=ReturnDocument.AFTER,
+        projection=_SAFE_PROJECTION,
+    )
+
+
+async def remove_competition(
+    db: AsyncIOMotorDatabase,
+    user_id: ObjectId,
+    comp_id: str,
+) -> dict | None:
+    from pymongo import ReturnDocument
+    return await db["users"].find_one_and_update(
+        {"_id": user_id},
+        {"$pull": {"competition_experiences": {"id": comp_id}}},
+        return_document=ReturnDocument.AFTER,
+        projection=_SAFE_PROJECTION,
+    )
+
+
 async def toggle_favorite(
     db: AsyncIOMotorDatabase,
     me_id: ObjectId,

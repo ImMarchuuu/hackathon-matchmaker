@@ -6,7 +6,7 @@ from bson import ObjectId
 from fastapi import HTTPException, UploadFile
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.models.user import FavoriteToggleResponse, UpdateProfileRequest, UserPublicResponse
+from app.models.user import AddCompetitionRequest, CompetitionExperience, FavoriteToggleResponse, UpdateProfileRequest, UserPublicResponse
 from app.repositories import user as user_repo
 from app.services.rank import rank_for_count, rank_overall_for_entries
 
@@ -96,6 +96,33 @@ async def update_profile(
             fields["rank_overall"] = await rank_overall_for_entries(redis, merged)
 
     doc = await user_repo.update_profile(db, oid, fields)
+    if not doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    return UserPublicResponse.from_document(doc)
+
+
+async def add_competition(
+    db: AsyncIOMotorDatabase,
+    user_id: str,
+    payload: AddCompetitionRequest,
+) -> UserPublicResponse:
+    if not ObjectId.is_valid(user_id):
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    entry = CompetitionExperience(**payload.model_dump()).model_dump()
+    doc = await user_repo.add_competition(db, ObjectId(user_id), entry)
+    if not doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    return UserPublicResponse.from_document(doc)
+
+
+async def remove_competition(
+    db: AsyncIOMotorDatabase,
+    user_id: str,
+    comp_id: str,
+) -> UserPublicResponse:
+    if not ObjectId.is_valid(user_id):
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    doc = await user_repo.remove_competition(db, ObjectId(user_id), comp_id)
     if not doc:
         raise HTTPException(status_code=404, detail="User not found")
     return UserPublicResponse.from_document(doc)

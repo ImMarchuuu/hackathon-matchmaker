@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from typing import Literal, Optional
 
@@ -34,6 +35,15 @@ class PortfolioEntry(BaseModel):
     role_description: str = ""
 
 
+class CompetitionExperience(BaseModel):
+    id: str = Field(default_factory=lambda: uuid.uuid4().hex)
+    competition_name: str = Field(min_length=1, max_length=120)
+    detail: str = Field(default="", max_length=600)
+    role: RoleName
+    skills: list[str] = []
+    contributor_ids: list[str] = []   # list of user _id strings
+
+
 class OAuthAccount(BaseModel):
     provider: OAuthProvider
     provider_id: str
@@ -64,6 +74,7 @@ class UserDocument(BaseModel):
     role: list[RoleEntry] = []
     skills: list[SkillEntry] = []
     portfolios: list[PortfolioEntry] = []
+    competition_experiences: list[CompetitionExperience] = []
     oauth_accounts: list[OAuthAccount] = []
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -96,6 +107,14 @@ class AddPortfolioRequest(BaseModel):
     role_played: RoleName
     skills_used: list[str] = []
     role_description: str = ""
+
+
+class AddCompetitionRequest(BaseModel):
+    competition_name: str = Field(min_length=1, max_length=120)
+    detail: str = Field(default="", max_length=600)
+    role: RoleName
+    skills: list[str] = []
+    contributor_ids: list[str] = []
 
 
 # ─── API response models ──────────────────────────────────────────────────────
@@ -153,6 +172,7 @@ class UserPublicResponse(BaseModel):
     role: list[RoleEntry]
     skills: list[SkillEntry]
     portfolios: list[PortfolioEntry]
+    competition_experiences: list[CompetitionExperience] = []
 
     @classmethod
     def from_document(cls, doc: dict) -> "UserPublicResponse":
