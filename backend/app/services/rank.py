@@ -20,6 +20,8 @@ from bson import ObjectId
 from fastapi import HTTPException
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
+from app.repositories import user as user_repo
+
 logger = logging.getLogger(__name__)
 
 # ── Redis keys ────────────────────────────────────────────────────────────────
@@ -169,8 +171,6 @@ async def get_rank_summary(
 
     Raises 422 on bad ID, 404 when user not found.
     """
-    from app.repositories import user as user_repo  # local import to avoid circular
-
     if not ObjectId.is_valid(user_id):
         raise HTTPException(status_code=422, detail="Invalid user ID format")
 
