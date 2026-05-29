@@ -39,7 +39,7 @@ class CompetitionExperience(BaseModel):
     id: str = Field(default_factory=lambda: uuid.uuid4().hex)
     competition_name: str = Field(min_length=1, max_length=120)
     detail: str = Field(default="", max_length=600)
-    role: RoleName
+    roles: list[RoleName] = Field(min_length=1)
     skills: list[str] = []
     contributor_ids: list[str] = []   # list of user _id strings
 
@@ -112,7 +112,7 @@ class AddPortfolioRequest(BaseModel):
 class AddCompetitionRequest(BaseModel):
     competition_name: str = Field(min_length=1, max_length=120)
     detail: str = Field(default="", max_length=600)
-    role: RoleName
+    roles: list[RoleName] = Field(min_length=1)
     skills: list[str] = []
     contributor_ids: list[str] = []
 

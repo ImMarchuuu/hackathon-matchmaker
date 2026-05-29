@@ -76,13 +76,17 @@ export default function CompetitionSection({
               key={comp.id}
               className="bg-white border border-gray-100 rounded-2xl shadow-sm p-5 flex flex-col gap-3"
             >
-              {/* Top row: name + role badge + delete */}
+              {/* Top row: name + role badges + delete */}
               <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                <div className="flex flex-col gap-1.5 min-w-0">
                   <h3 className="font-extrabold text-[#1b3168] text-base leading-tight">{comp.competition_name}</h3>
-                  <span className={`shrink-0 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${ROLE_COLORS[comp.role] ?? "bg-gray-100 text-gray-600"}`}>
-                    {comp.role}
-                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(comp.roles ?? []).map((r) => (
+                      <span key={r} className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${ROLE_COLORS[r] ?? "bg-gray-100 text-gray-600"}`}>
+                        {r}
+                      </span>
+                    ))}
+                  </div>
                 </div>
                 {isCurrentUser && (
                   <button

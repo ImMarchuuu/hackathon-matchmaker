@@ -34,7 +34,7 @@ export interface ApiCompetitionExperience {
   id: string;
   competition_name: string;
   detail: string;
-  role: string;
+  roles: string[];
   skills: string[];
   contributor_ids: string[];
 }

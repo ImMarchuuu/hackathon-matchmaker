@@ -16,7 +16,7 @@ interface CompetitionModalProps {
 export default function CompetitionModal({ allUsers, onClose, onAdded }: CompetitionModalProps) {
   const [name, setName] = useState("");
   const [detail, setDetail] = useState("");
-  const [role, setRole] = useState<string>(ROLES[0]);
+  const [roles, setRoles] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
   const [contributorIds, setContributorIds] = useState<string[]>([]);
@@ -43,6 +43,7 @@ export default function CompetitionModal({ allUsers, onClose, onAdded }: Competi
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) { setError("Competition name is required"); return; }
+    if (roles.length === 0) { setError("Select at least one role"); return; }
     setSaving(true);
     setError("");
     try {
@@ -50,7 +51,7 @@ export default function CompetitionModal({ allUsers, onClose, onAdded }: Competi
         "/api/v1/users/me/competitions",
         {
           method: "POST",
-          body: JSON.stringify({ competition_name: name.trim(), detail, role, skills, contributor_ids: contributorIds }),
+          body: JSON.stringify({ competition_name: name.trim(), detail, roles, skills, contributor_ids: contributorIds }),
         }
       );
       onAdded(updated.competition_experiences ?? []);
@@ -103,16 +104,34 @@ export default function CompetitionModal({ allUsers, onClose, onAdded }: Competi
               />
             </div>
 
-            {/* Role */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-bold text-[#1b3168] uppercase tracking-wide">Your Role</label>
-              <select
-                value={role}
-                onChange={(e) => setRole(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#1b3168] bg-white"
-              >
-                {ROLES.map((r) => <option key={r} value={r}>{r}</option>)}
-              </select>
+            {/* Roles — click to toggle, multiple allowed */}
+            <div className="flex flex-col gap-2">
+              <label className="text-xs font-bold text-[#1b3168] uppercase tracking-wide">
+                Your Role <span className="text-gray-400 font-normal normal-case">(select all that apply)</span>
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {ROLES.map((r) => {
+                  const selected = roles.includes(r);
+                  return (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() =>
+                        setRoles((prev) =>
+                          selected ? prev.filter((x) => x !== r) : [...prev, r]
+                        )
+                      }
+                      className={`px-4 py-2 rounded-full text-xs font-bold border transition-colors ${
+                        selected
+                          ? "bg-[#1b3168] text-white border-[#1b3168]"
+                          : "bg-white text-gray-600 border-gray-200 hover:border-[#1b3168] hover:text-[#1b3168]"
+                      }`}
+                    >
+                      {r}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* Skills */}
