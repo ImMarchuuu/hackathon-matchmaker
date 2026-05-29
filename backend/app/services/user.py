@@ -115,6 +115,21 @@ async def add_competition(
     return UserPublicResponse.from_document(doc)
 
 
+async def update_competition(
+    db: AsyncIOMotorDatabase,
+    user_id: str,
+    comp_id: str,
+    payload: AddCompetitionRequest,
+) -> UserPublicResponse:
+    if not ObjectId.is_valid(user_id):
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    entry = {**CompetitionExperience(**payload.model_dump()).model_dump(), "id": comp_id}
+    doc = await user_repo.update_competition(db, ObjectId(user_id), comp_id, entry)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Competition entry not found")
+    return UserPublicResponse.from_document(doc)
+
+
 async def remove_competition(
     db: AsyncIOMotorDatabase,
     user_id: str,

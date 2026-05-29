@@ -70,6 +70,21 @@ async def add_competition(
     )
 
 
+async def update_competition(
+    db: AsyncIOMotorDatabase,
+    user_id: ObjectId,
+    comp_id: str,
+    entry: dict,
+) -> dict | None:
+    from pymongo import ReturnDocument
+    return await db["users"].find_one_and_update(
+        {"_id": user_id, "competition_experiences.id": comp_id},
+        {"$set": {"competition_experiences.$": entry}},
+        return_document=ReturnDocument.AFTER,
+        projection=_SAFE_PROJECTION,
+    )
+
+
 async def remove_competition(
     db: AsyncIOMotorDatabase,
     user_id: ObjectId,

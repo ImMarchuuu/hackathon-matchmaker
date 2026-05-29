@@ -9,16 +9,18 @@ const ROLES = ["Developer", "Business", "UI/UX Designer", "Marketing", "AI / Dat
 
 interface CompetitionModalProps {
   allUsers: ApiUser[];
+  existing?: ApiCompetitionExperience;
   onClose: () => void;
-  onAdded: (updated: ApiCompetitionExperience[]) => void;
+  onSaved: (updated: ApiCompetitionExperience[]) => void;
 }
 
-export default function CompetitionModal({ allUsers, onClose, onAdded }: CompetitionModalProps) {
-  const [name, setName] = useState("");
-  const [detail, setDetail] = useState("");
-  const [roles, setRoles] = useState<string[]>([]);
+export default function CompetitionModal({ allUsers, existing, onClose, onSaved }: CompetitionModalProps) {
+  const isEdit = !!existing;
+  const [name, setName] = useState(existing?.competition_name ?? "");
+  const [detail, setDetail] = useState(existing?.detail ?? "");
+  const [roles, setRoles] = useState<string[]>(existing?.roles ?? []);
   const [skillInput, setSkillInput] = useState("");
-  const [skills, setSkills] = useState<string[]>([]);
+  const [skills, setSkills] = useState<string[]>(existing?.skills ?? []);
   const [contributorIds, setContributorIds] = useState<string[]>([]);
   const [userSearch, setUserSearch] = useState("");
   const [saving, setSaving] = useState(false);
@@ -46,15 +48,13 @@ export default function CompetitionModal({ allUsers, onClose, onAdded }: Competi
     if (roles.length === 0) { setError("Select at least one role"); return; }
     setSaving(true);
     setError("");
+    const body = JSON.stringify({ competition_name: name.trim(), detail, roles, skills, contributor_ids: contributorIds });
     try {
       const updated = await apiFetch<{ competition_experiences: ApiCompetitionExperience[] }>(
-        "/api/v1/users/me/competitions",
-        {
-          method: "POST",
-          body: JSON.stringify({ competition_name: name.trim(), detail, roles, skills, contributor_ids: contributorIds }),
-        }
+        isEdit ? `/api/v1/users/me/competitions/${existing!.id}` : "/api/v1/users/me/competitions",
+        { method: isEdit ? "PUT" : "POST", body }
       );
-      onAdded(updated.competition_experiences ?? []);
+      onSaved(updated.competition_experiences ?? []);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
@@ -72,7 +72,7 @@ export default function CompetitionModal({ allUsers, onClose, onAdded }: Competi
         <div className="p-8 flex flex-col gap-5">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-extrabold text-[#1b3168]">Add Competition Experience</h2>
+            <h2 className="text-xl font-extrabold text-[#1b3168]">{isEdit ? "Edit Experience" : "Add Competition Experience"}</h2>
             <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -223,7 +223,7 @@ export default function CompetitionModal({ allUsers, onClose, onAdded }: Competi
                 disabled={saving}
                 className="flex-1 py-3 rounded-full bg-[#1b3168] text-white text-sm font-bold hover:bg-[#12224f] disabled:opacity-60"
               >
-                {saving ? "Saving…" : "Add Experience"}
+                {saving ? "Saving…" : isEdit ? "Save Changes" : "Add Experience"}
               </button>
             </div>
           </form>

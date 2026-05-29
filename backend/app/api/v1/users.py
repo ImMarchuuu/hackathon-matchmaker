@@ -65,6 +65,17 @@ async def add_competition(
     return await user_service.add_competition(db, current_user_id, payload)
 
 
+@router.put("/me/competitions/{comp_id}", response_model=UserPublicResponse, summary="Update a competition experience")
+async def update_competition(
+    comp_id: str,
+    payload: AddCompetitionRequest,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+) -> UserPublicResponse:
+    """Replace a competition experience entry by its id."""
+    return await user_service.update_competition(db, current_user_id, comp_id, payload)
+
+
 @router.delete("/me/competitions/{comp_id}", response_model=UserPublicResponse, summary="Remove a competition experience")
 async def remove_competition(
     comp_id: str,
