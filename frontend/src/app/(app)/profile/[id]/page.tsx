@@ -21,6 +21,15 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
   const [me, setMe] = useState<ApiUser | null>(null);
   const [allUsers, setAllUsers] = useState<ApiUser[]>([]);
   const [competitions, setCompetitions] = useState<ApiCompetitionExperience[]>([]);
+
+  function handleCompetitionUpdated(updatedUser: ApiUser) {
+    setUser(updatedUser);
+    setCompetitions(updatedUser.competition_experiences ?? []);
+    // Re-fetch rank summary so role/skill sections reflect updated counts instantly
+    apiFetch<ApiRankSummary>(`/api/v1/users/${updatedUser._id}/rank-summary`)
+      .then(setRankSummary)
+      .catch(() => {});
+  }
   const [teams, setTeams] = useState<CompactActiveTeam[]>([]);
   const [rankSummary, setRankSummary] = useState<ApiRankSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -217,7 +226,7 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
               competitions={competitions}
               allUsers={allUsers}
               isCurrentUser={isCurrentUser}
-              onUpdated={setCompetitions}
+              onUpdated={handleCompetitionUpdated}
             />
           </div>
 

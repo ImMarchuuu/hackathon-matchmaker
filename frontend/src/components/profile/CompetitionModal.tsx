@@ -11,7 +11,7 @@ interface CompetitionModalProps {
   allUsers: ApiUser[];
   existing?: ApiCompetitionExperience;
   onClose: () => void;
-  onSaved: (updated: ApiCompetitionExperience[]) => void;
+  onSaved: (updatedUser: ApiUser) => void;
 }
 
 export default function CompetitionModal({ allUsers, existing, onClose, onSaved }: CompetitionModalProps) {
@@ -50,11 +50,11 @@ export default function CompetitionModal({ allUsers, existing, onClose, onSaved 
     setError("");
     const body = JSON.stringify({ competition_name: name.trim(), detail, roles, skills, contributor_ids: contributorIds });
     try {
-      const updated = await apiFetch<{ competition_experiences: ApiCompetitionExperience[] }>(
+      const updatedUser = await apiFetch<ApiUser>(
         isEdit ? `/api/v1/users/me/competitions/${existing!.id}` : "/api/v1/users/me/competitions",
         { method: isEdit ? "PUT" : "POST", body }
       );
-      onSaved(updated.competition_experiences ?? []);
+      onSaved(updatedUser);
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");

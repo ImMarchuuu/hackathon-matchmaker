@@ -18,7 +18,7 @@ interface CompetitionSectionProps {
   competitions: ApiCompetitionExperience[];
   allUsers: ApiUser[];
   isCurrentUser: boolean;
-  onUpdated: (entries: ApiCompetitionExperience[]) => void;
+  onUpdated: (updatedUser: ApiUser) => void;
 }
 
 export default function CompetitionSection({
@@ -36,11 +36,11 @@ export default function CompetitionSection({
   async function handleDelete(comp_id: string) {
     setDeletingId(comp_id);
     try {
-      const updated = await apiFetch<{ competition_experiences: ApiCompetitionExperience[] }>(
+      const updatedUser = await apiFetch<ApiUser>(
         `/api/v1/users/me/competitions/${comp_id}`,
         { method: "DELETE" }
       );
-      onUpdated(updated.competition_experiences ?? []);
+      onUpdated(updatedUser);
     } finally {
       setDeletingId(null);
     }
