@@ -60,9 +60,10 @@ async def add_competition(
     payload: AddCompetitionRequest,
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncIOMotorDatabase = Depends(db_dependency),
+    redis: aioredis.Redis = Depends(redis_dependency),
 ) -> UserPublicResponse:
-    """Append a competition experience entry to the current user's profile."""
-    return await user_service.add_competition(db, current_user_id, payload)
+    """Append a competition experience and recompute role/skill ranks."""
+    return await user_service.add_competition(db, redis, current_user_id, payload)
 
 
 @router.put("/me/competitions/{comp_id}", response_model=UserPublicResponse, summary="Update a competition experience")
@@ -71,9 +72,10 @@ async def update_competition(
     payload: AddCompetitionRequest,
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncIOMotorDatabase = Depends(db_dependency),
+    redis: aioredis.Redis = Depends(redis_dependency),
 ) -> UserPublicResponse:
-    """Replace a competition experience entry by its id."""
-    return await user_service.update_competition(db, current_user_id, comp_id, payload)
+    """Replace a competition experience entry and recompute role/skill ranks."""
+    return await user_service.update_competition(db, redis, current_user_id, comp_id, payload)
 
 
 @router.delete("/me/competitions/{comp_id}", response_model=UserPublicResponse, summary="Remove a competition experience")
@@ -81,9 +83,10 @@ async def remove_competition(
     comp_id: str,
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncIOMotorDatabase = Depends(db_dependency),
+    redis: aioredis.Redis = Depends(redis_dependency),
 ) -> UserPublicResponse:
-    """Remove a competition experience entry by its id."""
-    return await user_service.remove_competition(db, current_user_id, comp_id)
+    """Remove a competition experience entry and recompute role/skill ranks."""
+    return await user_service.remove_competition(db, redis, current_user_id, comp_id)
 
 
 @router.get("/me/favorites", response_model=list[UserPublicResponse], summary="Get current user's favorite people")

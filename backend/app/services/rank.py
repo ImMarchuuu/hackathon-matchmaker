@@ -224,3 +224,80 @@ async def get_rank_summary(
         "roles":           role_entries,
         "behavioral_rates": doc.get("behavioral_rates", 0.0),
     }
+
+
+async def recompute_from_competitions(
+    db: AsyncIOMotorDatabase,
+    redis: aioredis.Redis,
+    user_id: ObjectId,
+) -> None:
+    """
+    Scan competition_experiences and recompute project_count, tier, and
+    rank_title for every role and skill entry on the user document.
+
+    Called after any competition mutation (add / edit / delete) so that
+    rank data always reflects the full competition history.
+
+    Roles/skills present in the user document but not in any competition
+    are kept with their existing project_count preserved from profile edits.
+    New roles/skills found in competitions are added automatically.
+    """
+    doc = await user_repo.get_by_id(db, user_id)
+    if not doc:
+        return
+
+    competitions = doc.get("competition_experiences", [])
+    thresholds   = await _get_thresholds(redis)
+
+    # ── Count occurrences across all competition entries ──────────────────────
+    role_counts: dict[str, int] = {}
+    skill_counts: dict[str, int] = {}
+
+    for comp in competitions:
+        for r in comp.get("roles", []):
+            role_counts[r] = role_counts.get(r, 0) + 1
+        for s in comp.get("skills", []):
+            skill_counts[s] = skill_counts.get(s, 0) + 1
+
+    # ── Rebuild role entries ──────────────────────────────────────────────────
+    existing_roles = {r["name"]: r for r in doc.get("role", [])}
+
+    # Union: all previously declared roles + any new ones from competitions
+    all_role_names = set(existing_roles) | set(role_counts)
+    new_roles = []
+    for name in all_role_names:
+        count = role_counts.get(name, existing_roles.get(name, {}).get("project_count", 0))
+        rank  = _compute(count, thresholds)
+        new_roles.append({
+            "name":          name,
+            "project_count": count,
+            "tier":          rank["tier"],
+            "rank_title":    rank["rank_title"],
+        })
+
+    # ── Rebuild skill entries ─────────────────────────────────────────────────
+    existing_skills = {s["name"]: s for s in doc.get("skills", [])}
+
+    all_skill_names = set(existing_skills) | set(skill_counts)
+    new_skills = []
+    for name in all_skill_names:
+        count = skill_counts.get(name, existing_skills.get(name, {}).get("project_count", 0))
+        rank  = _compute(count, thresholds)
+        new_skills.append({
+            "name":          name,
+            "project_count": count,
+            "tier":          rank["tier"],
+            "rank_title":    rank["rank_title"],
+        })
+
+    # ── Overall rank (best skill tier) ───────────────────────────────────────
+    if new_skills:
+        best_tier    = max(s["tier"] for s in new_skills)
+        rank_overall = next(s["rank_title"] for s in new_skills if s["tier"] == best_tier)
+    else:
+        rank_overall = "Bronze"
+
+    await db["users"].update_one(
+        {"_id": user_id},
+        {"$set": {"role": new_roles, "skills": new_skills, "rank_overall": rank_overall}},
+    )

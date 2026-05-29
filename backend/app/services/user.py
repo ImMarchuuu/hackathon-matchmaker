@@ -8,7 +8,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.models.user import AddCompetitionRequest, CompetitionExperience, FavoriteToggleResponse, UpdateProfileRequest, UserPublicResponse
 from app.repositories import user as user_repo
-from app.services.rank import rank_for_count, rank_overall_for_entries
+from app.services.rank import rank_for_count, rank_overall_for_entries, recompute_from_competitions
 
 _ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 _MAX_IMAGE_BYTES = 5 * 1024 * 1024  # 5 MB
@@ -103,44 +103,53 @@ async def update_profile(
 
 async def add_competition(
     db: AsyncIOMotorDatabase,
+    redis: aioredis.Redis,
     user_id: str,
     payload: AddCompetitionRequest,
 ) -> UserPublicResponse:
     if not ObjectId.is_valid(user_id):
         raise HTTPException(status_code=401, detail="Invalid token payload")
+    oid = ObjectId(user_id)
     entry = CompetitionExperience(**payload.model_dump()).model_dump()
-    doc = await user_repo.add_competition(db, ObjectId(user_id), entry)
+    doc = await user_repo.add_competition(db, oid, entry)
     if not doc:
         raise HTTPException(status_code=404, detail="User not found")
-    return UserPublicResponse.from_document(doc)
+    await recompute_from_competitions(db, redis, oid)
+    return UserPublicResponse.from_document(await user_repo.get_by_id(db, oid))
 
 
 async def update_competition(
     db: AsyncIOMotorDatabase,
+    redis: aioredis.Redis,
     user_id: str,
     comp_id: str,
     payload: AddCompetitionRequest,
 ) -> UserPublicResponse:
     if not ObjectId.is_valid(user_id):
         raise HTTPException(status_code=401, detail="Invalid token payload")
+    oid = ObjectId(user_id)
     entry = {**CompetitionExperience(**payload.model_dump()).model_dump(), "id": comp_id}
-    doc = await user_repo.update_competition(db, ObjectId(user_id), comp_id, entry)
+    doc = await user_repo.update_competition(db, oid, comp_id, entry)
     if not doc:
         raise HTTPException(status_code=404, detail="Competition entry not found")
-    return UserPublicResponse.from_document(doc)
+    await recompute_from_competitions(db, redis, oid)
+    return UserPublicResponse.from_document(await user_repo.get_by_id(db, oid))
 
 
 async def remove_competition(
     db: AsyncIOMotorDatabase,
+    redis: aioredis.Redis,
     user_id: str,
     comp_id: str,
 ) -> UserPublicResponse:
     if not ObjectId.is_valid(user_id):
         raise HTTPException(status_code=401, detail="Invalid token payload")
-    doc = await user_repo.remove_competition(db, ObjectId(user_id), comp_id)
+    oid = ObjectId(user_id)
+    doc = await user_repo.remove_competition(db, oid, comp_id)
     if not doc:
         raise HTTPException(status_code=404, detail="User not found")
-    return UserPublicResponse.from_document(doc)
+    await recompute_from_competitions(db, redis, oid)
+    return UserPublicResponse.from_document(await user_repo.get_by_id(db, oid))
 
 
 async def toggle_favorite(
