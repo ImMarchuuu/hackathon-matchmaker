@@ -1,8 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { CURRENT_USER_ID, mockUsers } from "@/data/mockData";
+import ProjectCompetitionCard from "@/components/skill-bank/ProjectCompetitionCard";
+import TeamCompetitionCard from "@/components/skill-bank/TeamCompetitionCard";
 
 export type SkillRank = "Bronze" | "Silver" | "Gold" | "Diamond";
 
@@ -73,6 +75,7 @@ export function calculateOverallRank(skills: { count: number }[]): SkillProgress
 }
 
 export default function SkillBankPage() {
+  const [activeTab, setActiveTab] = useState<"all" | "projects" | "teams">("all");
   const user = mockUsers[CURRENT_USER_ID];
   
   if (!user) {
@@ -216,21 +219,95 @@ export default function SkillBankPage() {
             </div>
           </section>
 
-          {/* Section 5: Competitions (Placeholder) */}
+          {/* Section 5: Competitions & Projects */}
           <section className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-8 flex flex-col h-fit">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-[#1b3168] font-extrabold text-xl">Competitions</h2>
-              <button className="bg-[#1b3168] text-white px-5 py-2 rounded-full font-bold text-sm hover:bg-[#12224f] transition-colors flex items-center gap-1 shadow-sm">
-                create
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
-              </button>
+            {/* Header Structure (Flexbox Layout) */}
+            <div className="flex flex-col gap-4 mb-6">
+              {/* Row 1 (Titles & Action) */}
+              <div className="flex flex-row justify-between items-start w-full">
+                <div>
+                  <h2 className="text-[#1b3168] font-extrabold text-xl">Competitions & Projects</h2>
+                  <p className="text-gray-500 text-xs mt-0.5">ประวัติผลงานการแข่งขันและโปรเจกต์เด่นของคุณ</p>
+                </div>
+                {/* Create Button */}
+                <button className="bg-[#0B1A42] text-white px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm hover:bg-[#06102a] transition-all flex items-center gap-1.5 shadow-sm shrink-0 active:scale-95">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>สร้างโปรเจค</span>
+                </button>
+              </div>
+              
+              {/* Row 2 (Filter Toggle) */}
+              <div className="flex justify-center md:justify-start w-full">
+                <div className="flex bg-gray-100 p-1 rounded-xl shrink-0">
+                  <button
+                    onClick={() => setActiveTab("all")}
+                    className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${
+                      activeTab === "all" ? "bg-[#1b3168] text-white shadow-sm" : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    ALL
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("projects")}
+                    className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${
+                      activeTab === "projects" ? "bg-[#1b3168] text-white shadow-sm" : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    PROJECTS
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("teams")}
+                    className={`px-4 py-2 rounded-lg text-xs font-black transition-all ${
+                      activeTab === "teams" ? "bg-[#1b3168] text-white shadow-sm" : "text-gray-500 hover:text-gray-700"
+                    }`}
+                  >
+                    TEAMS
+                  </button>
+                </div>
+              </div>
             </div>
-            
-            <div className="w-full border-2 border-dashed border-gray-200 rounded-2xl py-12 flex flex-col items-center justify-center bg-gray-50/50">
-              <svg className="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-              </svg>
-              <p className="text-gray-400 font-bold tracking-wide">Coming Soon</p>
+
+            {/* Vertical Stack Layout */}
+            <div className="flex flex-col gap-4 w-full">
+              {(activeTab === "all" || activeTab === "projects") && (
+                <>
+                  <ProjectCompetitionCard
+                    id="mod-pao"
+                    title="Mod Pao - Smart Vending Machine"
+                    subtitle="Frontend (Next.js)"
+                    date="May 2026"
+                  />
+                  <ProjectCompetitionCard
+                    id="heart-disease"
+                    title="Heart Disease Predictive Model"
+                    subtitle="Data Scientist"
+                    date="April 2026"
+                  />
+                </>
+              )}
+
+              {(activeTab === "all" || activeTab === "teams") && (
+                <>
+                  <TeamCompetitionCard
+                    id="line-innovators"
+                    title="LINE Innovators"
+                    subtitle="Strategist"
+                    date="Feb 2026"
+                    status="Pending"
+                    members={4}
+                  />
+                  <TeamCompetitionCard
+                    id="ai-hackathon"
+                    title="AI Engineering Hackathon"
+                    subtitle="AI Engineer"
+                    date="March 2026"
+                    status="Finished"
+                    members={5}
+                  />
+                </>
+              )}
             </div>
           </section>
         </div>

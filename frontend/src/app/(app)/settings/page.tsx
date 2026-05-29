@@ -155,6 +155,62 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        <hr className="my-8 border-gray-100" />
+
+        {/* ── Section 4: ข้อมูลทางกฎหมาย & เกี่ยวกับเรา (Legal & About) ── */}
+        <div className="flex flex-col gap-6">
+          <div className="flex items-center gap-2 text-[#1b3168]">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <h2 className="font-bold text-lg">ข้อมูลทางกฎหมาย & เกี่ยวกับเรา</h2>
+          </div>
+
+          <div className="flex flex-col gap-4 pl-2 sm:pl-8">
+            {/* Terms of Service Link */}
+            <Link
+              href="/terms"
+              className="flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md hover:bg-gray-50/50 transition-all cursor-pointer group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-50/50 flex items-center justify-center shrink-0 group-hover:bg-blue-50 transition-colors">
+                  <svg className="w-5 h-5 text-[#1b3168]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-gray-800 font-bold text-sm">ข้อตกลงการใช้งาน (Terms of Service)</p>
+                  <p className="text-gray-500 text-xs mt-0.5">อ่านกฎ กติกา และเงื่อนไขการใช้บริการของ GrandLine</p>
+                </div>
+              </div>
+              <svg className="w-5 h-5 text-gray-400 group-hover:text-[#1b3168] transform group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+
+            {/* Privacy Policy Link */}
+            <Link
+              href="/privacy"
+              className="flex items-center justify-between p-4 rounded-2xl border border-gray-100 bg-white shadow-sm hover:shadow-md hover:bg-gray-50/50 transition-all cursor-pointer group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-blue-50/50 flex items-center justify-center shrink-0 group-hover:bg-blue-50 transition-colors">
+                  <svg className="w-5 h-5 text-[#1b3168]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-gray-800 font-bold text-sm">นโยบายความเป็นส่วนตัว (Privacy Policy)</p>
+                  <p className="text-gray-500 text-xs mt-0.5">การเก็บรักษา ป้องกัน และการประมวลผลข้อมูลส่วนบุคคลของคุณ</p>
+                </div>
+              </div>
+              <svg className="w-5 h-5 text-gray-400 group-hover:text-[#1b3168] transform group-hover:translate-x-1 transition-all" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
+        </div>
+
       </div>
     </div>
   );

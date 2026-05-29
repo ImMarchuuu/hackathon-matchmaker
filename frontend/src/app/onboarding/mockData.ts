@@ -1,0 +1,133 @@
+import type { TeamCardViewModel, PeopleCardViewModel } from "@/types";
+
+/**
+ * Realistic mock data for the onboarding tutorial.
+ * This feeds into the real FindTeamContent so the user sees
+ * production-quality cards during the coachmark walkthrough.
+ */
+
+export const MOCK_TEAMS: TeamCardViewModel[] = [
+  {
+    id: "onb-t1",
+    avatarUrl: "https://i.pravatar.cc/150?u=onb-leader1",
+    title: "หาเพื่อนไป NSC",
+    authorName: "นายกิตติพงศ์ สุขใจ",
+    dateRange: "1 Jan 2569 - 15 Jan 2569",
+    daysLeft: 1,
+    roles: ["Developer", "AI / Data"],
+    skills: ["React", "Tailwind", "Python", "FastAPI", "Docker"],
+    currentMemberCount: 3,
+    maxMembers: 4,
+    memberAvatars: [
+      "https://i.pravatar.cc/150?u=onb-m1",
+      "https://i.pravatar.cc/150?u=onb-m2",
+      "https://i.pravatar.cc/150?u=onb-m3",
+    ],
+    description: "กำลังหา Developer เก่ง React + AI Engineer 1 คน สำหรับ NSC 2569 รอบ Final!",
+    detailedMembers: [
+      { name: "กิตติพงศ์", avatar: "https://i.pravatar.cc/150?u=onb-m1", role: "Developer", score: 4.5 },
+      { name: "สมหญิง", avatar: "https://i.pravatar.cc/150?u=onb-m2", role: "UI/UX Designer", score: 4.8 },
+      { name: "วรัญญู", avatar: "https://i.pravatar.cc/150?u=onb-m3", role: "Business", score: 4.2 },
+    ],
+  },
+  {
+    id: "onb-t2",
+    avatarUrl: "https://i.pravatar.cc/150?u=onb-leader2",
+    title: "AI Startup Weekend",
+    authorName: "สมศรี ใจดี",
+    dateRange: "20 Jan 2569 - 22 Jan 2569",
+    daysLeft: 5,
+    roles: ["Business", "AI / Data", "Pitching"],
+    skills: ["TensorFlow", "Figma", "Business Model Canvas"],
+    currentMemberCount: 2,
+    maxMembers: 5,
+    memberAvatars: [
+      "https://i.pravatar.cc/150?u=onb-m4",
+      "https://i.pravatar.cc/150?u=onb-m5",
+    ],
+    description: "รวมทีม AI Startup สร้าง MVP ใน 48 ชั่วโมง ต้องการ Business + Pitcher!",
+    detailedMembers: [
+      { name: "สมศรี", avatar: "https://i.pravatar.cc/150?u=onb-m4", role: "AI / Data", score: 4.7 },
+      { name: "ธนา", avatar: "https://i.pravatar.cc/150?u=onb-m5", role: "Developer", score: 4.3 },
+    ],
+  },
+  {
+    id: "onb-t3",
+    avatarUrl: "https://i.pravatar.cc/150?u=onb-leader3",
+    title: "Super Hackathon 2569",
+    authorName: "วรัญญู เก่งมาก",
+    dateRange: "5 Feb 2569 - 7 Feb 2569",
+    daysLeft: 12,
+    roles: ["Developer", "UI/UX Designer", "Pitching"],
+    skills: ["Next.js", "Node.js", "Prisma", "PostgreSQL"],
+    currentMemberCount: 1,
+    maxMembers: 4,
+    memberAvatars: [
+      "https://i.pravatar.cc/150?u=onb-m6",
+    ],
+    description: "เปิดรับ Full-stack + Designer + Pitcher สำหรับ Hackathon ระดับประเทศ",
+    detailedMembers: [
+      { name: "วรัญญู", avatar: "https://i.pravatar.cc/150?u=onb-m6", role: "Developer", score: 4.9 },
+    ],
+  },
+  {
+    id: "onb-t4",
+    avatarUrl: "https://i.pravatar.cc/150?u=onb-leader4",
+    title: "FinTech Challenge",
+    authorName: "ธนาคม รุ่งเรือง",
+    dateRange: "10 Feb 2569 - 12 Feb 2569",
+    daysLeft: 3,
+    roles: ["Developer", "Business"],
+    skills: ["Flutter", "Firebase", "Stripe", "Go"],
+    currentMemberCount: 2,
+    maxMembers: 3,
+    memberAvatars: [
+      "https://i.pravatar.cc/150?u=onb-m7",
+      "https://i.pravatar.cc/150?u=onb-m8",
+    ],
+    description: "Mobile FinTech app — ต้องการ Backend Developer ที่มีประสบการณ์ Payment Gateway",
+    detailedMembers: [
+      { name: "ธนาคม", avatar: "https://i.pravatar.cc/150?u=onb-m7", role: "Developer", score: 4.6 },
+      { name: "พิมพ์", avatar: "https://i.pravatar.cc/150?u=onb-m8", role: "Business", score: 4.1 },
+    ],
+  },
+];
+
+export const MOCK_PEOPLE: PeopleCardViewModel[] = [
+  {
+    id: "onb-p1",
+    name: "ชานนท์ สุนทรภักดี",
+    bio: "Full-stack developer ชอบ React, Next.js, และ DevOps. กำลังหาทีมสำหรับ NSC 2569.",
+    avatarUrl: "https://i.pravatar.cc/150?u=onb-p1",
+    roleTags: ["Developer"],
+    skillTags: ["React", "TypeScript", "Docker", "AWS"],
+    isFavorited: false,
+  },
+  {
+    id: "onb-p2",
+    name: "พิมพ์พิศา สุขใจ",
+    bio: "UX/UI Designer & Brand Strategist. เชี่ยวชาญ Figma, Design System, และ User Research.",
+    avatarUrl: "https://i.pravatar.cc/150?u=onb-p2",
+    roleTags: ["UI/UX Designer"],
+    skillTags: ["Figma", "Adobe XD", "User Research", "Canva"],
+    isFavorited: false,
+  },
+  {
+    id: "onb-p3",
+    name: "สุรชัย ดีเลิศ",
+    bio: "AI/ML Engineer สนใจ NLP และ Computer Vision. อยากร่วมทีม Hackathon ที่ท้าทาย.",
+    avatarUrl: "https://i.pravatar.cc/150?u=onb-p3",
+    roleTags: ["AI / Data"],
+    skillTags: ["Python", "TensorFlow", "PyTorch", "OpenCV"],
+    isFavorited: false,
+  },
+  {
+    id: "onb-p4",
+    name: "อรัญญา ธรรมดี",
+    bio: "Business & Pitching specialist. ชนะรางวัล Best Pitcher จาก Startup Thailand 2568.",
+    avatarUrl: "https://i.pravatar.cc/150?u=onb-p4",
+    roleTags: ["Business", "Pitching"],
+    skillTags: ["Business Model Canvas", "Pitching", "Marketing"],
+    isFavorited: false,
+  },
+];
