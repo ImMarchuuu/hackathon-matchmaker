@@ -55,6 +55,23 @@ async def upload_cover(
     return await user_service.upload_cover(db, current_user_id, file)
 
 
+@router.post("/me/recompute-ranks", response_model=UserPublicResponse, summary="Recompute role/skill ranks from competition history")
+async def recompute_ranks(
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+    redis: aioredis.Redis = Depends(redis_dependency),
+) -> UserPublicResponse:
+    """Force-recompute role and skill ranks from the current competition history."""
+    from bson import ObjectId as BsonObjectId
+    from app.services.rank import recompute_from_competitions
+    if not BsonObjectId.is_valid(current_user_id):
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    oid = BsonObjectId(current_user_id)
+    await recompute_from_competitions(db, redis, oid)
+    doc = await user_service.get_current_user(db, current_user_id)
+    return doc
+
+
 @router.post("/me/competitions", response_model=UserPublicResponse, status_code=201, summary="Add a competition experience")
 async def add_competition(
     payload: AddCompetitionRequest,
