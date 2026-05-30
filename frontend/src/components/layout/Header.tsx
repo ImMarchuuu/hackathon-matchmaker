@@ -39,11 +39,16 @@ function ProfilePopup({ onClose, user }: { onClose: () => void; user: ApiUser | 
         >
           การตั้งค่า
         </Link>
-        <button 
-          onClick={() => {
+        <button
+          onClick={async () => {
+            try {
+              await apiFetch("/api/v1/auth/logout", { method: "POST" });
+            } catch {
+              // even if the request fails, clear the cookie and redirect
+            }
             document.cookie = "grandline_auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-            window.location.href = "/login";
             onClose?.();
+            window.location.href = "/login";
           }}
           className="w-full bg-white text-[#ff4d4f] border border-[#ff4d4f]/30 font-bold tracking-wide py-3.5 rounded-full text-center hover:bg-red-50 transition-colors text-sm shadow-sm mt-1"
         >
