@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.sessions import SessionMiddleware
 
 from app.core.config import settings
 from app.core.db import close_db_connections, get_redis, init_db_connections
@@ -27,6 +28,9 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # SessionMiddleware must come before CORSMiddleware so OAuth state is
+    # available in the session during the callback request.
+    application.add_middleware(SessionMiddleware, secret_key=settings.session_secret)
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins_list,
