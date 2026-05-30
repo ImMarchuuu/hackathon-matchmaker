@@ -4,6 +4,12 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 _SAFE_PROJECTION = {"password_hash": 0, "oauth_accounts": 0}
 
 
+async def delete_user(db: AsyncIOMotorDatabase, user_id: ObjectId) -> None:
+    await db["users"].delete_one({"_id": user_id})
+    # Remove this user from everyone else's favorite_ids
+    await db["users"].update_many({}, {"$pull": {"favorite_ids": user_id}})
+
+
 async def get_all(
     db: AsyncIOMotorDatabase,
     *,

@@ -15,6 +15,19 @@ _MAX_IMAGE_BYTES = 5 * 1024 * 1024  # 5 MB
 _UPLOADS_ROOT = Path("/app/uploads")
 
 
+async def delete_account(
+    db: AsyncIOMotorDatabase,
+    redis: aioredis.Redis,
+    user_id: str,
+    token: str,
+) -> None:
+    if not ObjectId.is_valid(user_id):
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    await user_repo.delete_user(db, ObjectId(user_id))
+    from app.core.security import denylist_token
+    await denylist_token(redis, token)
+
+
 async def list_users(
     db: AsyncIOMotorDatabase,
     *,

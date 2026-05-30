@@ -23,6 +23,19 @@ export default function SettingsPage() {
   const router = useRouter();
   const [user, setUser] = useState<ApiUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDeleteAccount() {
+    setDeleting(true);
+    try {
+      await apiFetch("/api/v1/users/me", { method: "DELETE" });
+    } catch {
+      // account deleted — token may already be revoked
+    }
+    document.cookie = "grandline_auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    router.replace("/login");
+  }
 
   useEffect(() => {
     apiFetch<ApiUser>("/api/v1/users/me")
@@ -163,7 +176,65 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        <hr className="my-8 border-red-100" />
+
+        {/* ── Danger Zone ── */}
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-2 text-red-500">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+            <h2 className="font-bold text-base">Danger Zone</h2>
+          </div>
+
+          <div className="flex items-center justify-between gap-4 p-4 rounded-2xl border border-red-100 bg-red-50">
+            <div>
+              <p className="text-gray-800 font-bold text-sm">ลบบัญชีผู้ใช้</p>
+              <p className="text-gray-500 text-xs mt-0.5">ลบบัญชีและข้อมูลทั้งหมดอย่างถาวร ไม่สามารถกู้คืนได้</p>
+            </div>
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="shrink-0 px-4 py-2 rounded-full border border-red-400 text-red-500 text-xs font-bold hover:bg-red-500 hover:text-white transition-colors"
+            >
+              ลบบัญชี
+            </button>
+          </div>
+        </div>
+
       </div>
+
+      {/* ── Confirm Delete Modal ── */}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => !deleting && setConfirmDelete(false)}>
+          <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-sm p-8 flex flex-col items-center gap-6" onClick={(e) => e.stopPropagation()}>
+            <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
+              <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+            <div className="text-center space-y-2">
+              <h3 className="text-[#1b3168] font-extrabold text-lg">ยืนยันการลบบัญชี?</h3>
+              <p className="text-gray-500 text-sm leading-relaxed">บัญชีและข้อมูลทั้งหมดจะถูกลบถาวร<br />ไม่สามารถกู้คืนได้</p>
+            </div>
+            <div className="flex gap-3 w-full">
+              <button
+                onClick={() => setConfirmDelete(false)}
+                disabled={deleting}
+                className="flex-1 py-3 rounded-full border-2 border-gray-200 text-gray-600 text-sm font-bold hover:bg-gray-50 disabled:opacity-50"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleting}
+                className="flex-1 py-3 rounded-full bg-red-500 text-white text-sm font-bold hover:bg-red-600 disabled:opacity-60"
+              >
+                {deleting ? "กำลังลบ…" : "ยืนยันลบ"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

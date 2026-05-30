@@ -1,7 +1,8 @@
 from typing import Optional
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.db import db_dependency, redis_dependency
@@ -13,6 +14,7 @@ from app.services import user as user_service
 from app.services.rank import get_rank_summary
 
 router = APIRouter(prefix="/users", tags=["Users"])
+_bearer = HTTPBearer(auto_error=False)
 
 
 @router.get("/me", response_model=UserPublicResponse, summary="Get current user profile")
@@ -22,6 +24,18 @@ async def get_me(
 ) -> UserPublicResponse:
     """Return the profile of the currently authenticated user."""
     return await user_service.get_current_user(db, current_user_id)
+
+
+@router.delete("/me", status_code=204, summary="Delete current user account")
+async def delete_me(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+    redis: aioredis.Redis = Depends(redis_dependency),
+) -> None:
+    """Permanently delete the authenticated user's account and revoke their token."""
+    token = credentials.credentials if credentials else ""
+    await user_service.delete_account(db, redis, current_user_id, token)
 
 
 @router.put("/me", response_model=UserPublicResponse, summary="Update current user profile")
