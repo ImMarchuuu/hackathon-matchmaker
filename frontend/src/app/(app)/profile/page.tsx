@@ -10,8 +10,8 @@ export default function ProfileRedirectPage() {
 
   useEffect(() => {
     apiFetch<ApiUser>("/api/v1/users/me")
-      .then((user) => router.replace(`/profile/${user.username}`))
-      .catch(() => router.replace("/login"));
+      .then((user) => router.replace(`/profile/${user.username ?? "u1"}`))
+      .catch(() => router.replace("/profile/u1"));
   }, [router]);
 
   return (

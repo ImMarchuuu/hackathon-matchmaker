@@ -7,7 +7,7 @@ import type { ApiUser } from "@/types/profile";
 
 function ProfilePopup({ onClose, user }: { onClose: () => void; user: ApiUser | null }) {
   return (
-    <div className="absolute top-[110%] right-0 mt-1 w-72 bg-white rounded-[2rem] shadow-xl border border-gray-100 p-6 z-50 flex flex-col gap-5 cursor-default origin-top-right animate-in fade-in zoom-in-95 duration-200">
+    <div className="absolute top-[110%] right-0 mt-1 w-72 bg-white dark:bg-slate-800 rounded-[2rem] shadow-xl border border-gray-100 dark:border-slate-700 p-6 z-50 flex flex-col gap-5 cursor-default origin-top-right animate-in fade-in zoom-in-95 duration-200">
       {/* ── Profile Summary ── */}
       <div className="flex flex-col items-center gap-1">
         <div className="w-20 h-20 rounded-full border-4 border-white shadow-sm overflow-hidden bg-gray-50 shrink-0">
@@ -15,13 +15,13 @@ function ProfilePopup({ onClose, user }: { onClose: () => void; user: ApiUser | 
           <img src={user?.avatar_url ?? "/avatar.png"} alt={user?.name ?? "Profile"} className="w-full h-full object-cover" />
         </div>
         <div className="text-center mt-2">
-          <h4 className="text-[#1b3168] font-black text-xl leading-none">{user?.name ?? "—"}</h4>
-          <p className="text-gray-500 font-semibold text-xs mt-1.5">{user?.email ?? "—"}</p>
+          <h4 className="text-[#1b3168] dark:text-blue-300 font-black text-xl leading-none">{user?.name ?? "—"}</h4>
+          <p className="text-gray-500 dark:text-slate-400 font-semibold text-xs mt-1.5">{user?.email ?? "—"}</p>
         </div>
       </div>
 
       {/* Divider */}
-      <hr className="border-gray-100 -mx-6 mt-1 mb-1" />
+      <hr className="border-gray-100 dark:border-slate-700 -mx-6 mt-1 mb-1" />
 
       {/* ── Action Buttons ── */}
       <div className="flex flex-col gap-3">
@@ -35,7 +35,7 @@ function ProfilePopup({ onClose, user }: { onClose: () => void; user: ApiUser | 
         <Link 
           href="/settings" 
           onClick={onClose} 
-          className="w-full bg-white text-[#1b3168] border border-gray-200 font-bold tracking-wide py-3.5 rounded-full text-center hover:bg-gray-50 transition-colors text-sm shadow-sm"
+          className="w-full bg-white dark:bg-slate-700 text-[#1b3168] dark:text-blue-300 border border-gray-200 dark:border-slate-600 font-bold tracking-wide py-3.5 rounded-full text-center hover:bg-gray-50 dark:hover:bg-slate-600 transition-colors text-sm shadow-sm"
         >
           การตั้งค่า
         </Link>
@@ -45,7 +45,7 @@ function ProfilePopup({ onClose, user }: { onClose: () => void; user: ApiUser | 
             window.location.href = "/login";
             onClose?.();
           }}
-          className="w-full bg-white text-[#ff4d4f] border border-[#ff4d4f]/30 font-bold tracking-wide py-3.5 rounded-full text-center hover:bg-red-50 transition-colors text-sm shadow-sm mt-1"
+          className="w-full bg-white dark:bg-slate-700 text-[#ff4d4f] border border-[#ff4d4f]/30 font-bold tracking-wide py-3.5 rounded-full text-center hover:bg-red-50 dark:hover:bg-slate-600 transition-colors text-sm shadow-sm mt-1"
         >
           ออกจากระบบ
         </button>
@@ -92,7 +92,7 @@ function NotificationPopup({ onClose }: { onClose: () => void }) {
   ];
 
   return (
-    <div className="absolute top-[140%] right-[-60px] sm:right-0 mt-1 w-[340px] sm:w-[400px] bg-white rounded-[2rem] shadow-xl border border-gray-100 p-5 z-50 flex flex-col gap-4 cursor-default origin-top-right animate-in fade-in zoom-in-95 duration-200">
+    <div className="absolute top-[140%] right-[-60px] sm:right-0 mt-1 w-[340px] sm:w-[400px] bg-white dark:bg-slate-800 rounded-[2rem] shadow-xl border border-gray-100 dark:border-slate-700 p-5 z-50 flex flex-col gap-4 cursor-default origin-top-right animate-in fade-in zoom-in-95 duration-200">
       <div className="flex justify-between items-center px-2">
         <h3 className="text-[#1b3168] font-black text-lg">การแจ้งเตือน</h3>
         <button className="text-blue-600 font-bold text-sm hover:text-blue-800 transition-colors">อ่านทั้งหมด</button>
