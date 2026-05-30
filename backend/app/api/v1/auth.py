@@ -80,18 +80,29 @@ async def _upsert_oauth_user(
     existing = await user_repo.get_by_email(db, email)
 
     if existing:
-        # Link provider if not already linked
+        push_ops: dict = {}
+        set_ops: dict = {}
+
         already_linked = any(
             a.get("provider") == provider for a in existing.get("oauth_accounts", [])
         )
         if not already_linked:
-            await db["users"].update_one(
-                {"_id": existing["_id"]},
-                {"$push": {"oauth_accounts": {
-                    "provider": provider,
-                    "provider_id": provider_id,
-                }}},
-            )
+            push_ops["oauth_accounts"] = {"provider": provider, "provider_id": provider_id}
+
+        # Fill in missing avatar / name from the OAuth provider
+        if avatar_url and not existing.get("avatar_url"):
+            set_ops["avatar_url"] = avatar_url
+        if name and not existing.get("name"):
+            set_ops["name"] = name
+
+        update: dict = {}
+        if push_ops:
+            update["$push"] = push_ops
+        if set_ops:
+            update["$set"] = set_ops
+        if update:
+            await db["users"].update_one({"_id": existing["_id"]}, update)
+
         return str(existing["_id"])
 
     # New user — create account
