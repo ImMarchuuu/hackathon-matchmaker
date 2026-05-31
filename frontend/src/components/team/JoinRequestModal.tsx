@@ -46,7 +46,8 @@ export default function JoinRequestModal({
         {/* Roles */}
         <div className="flex flex-col gap-2">
           <label className="text-xs font-bold text-[#1b3168] uppercase tracking-wide">
-            ตำแหน่งที่ต้องการ <span className="text-gray-400 font-normal normal-case">(เลือกได้หลายอัน)</span>
+            ตำแหน่งที่ต้องการ <span className="text-red-500 font-bold">*</span>{" "}
+            <span className="text-gray-400 font-normal normal-case">(เลือกอย่างน้อย 1 อัน)</span>
           </label>
           {availableRoles.length > 0 ? (
             <div className="flex flex-wrap gap-2">
@@ -95,6 +96,10 @@ export default function JoinRequestModal({
           )}
         </div>
 
+        {roles.length === 0 && availableRoles.length > 0 && (
+          <p className="text-red-500 text-xs font-semibold -mt-2">กรุณาเลือกตำแหน่งอย่างน้อย 1 อัน</p>
+        )}
+
         <div className="flex gap-3 pt-2">
           <button
             type="button"
@@ -107,8 +112,8 @@ export default function JoinRequestModal({
           <button
             type="button"
             onClick={() => onSubmit(roles, skills)}
-            disabled={saving}
-            className="flex-1 py-3 rounded-full bg-[#1b3168] text-white text-sm font-bold hover:bg-[#12224f] disabled:opacity-60"
+            disabled={saving || (availableRoles.length > 0 && roles.length === 0)}
+            className="flex-1 py-3 rounded-full bg-[#1b3168] text-white text-sm font-bold hover:bg-[#12224f] disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {saving ? "กำลังส่ง…" : "ส่งคำขอ"}
           </button>

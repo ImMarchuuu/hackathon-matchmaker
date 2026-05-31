@@ -16,7 +16,7 @@ function fmt(d: string): string {
   return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function buildCardData(team: ApiTeam, userMap: Record<string, ApiUser>): ActiveTeamCardData {
+function buildCardData(team: ApiTeam, userMap: Record<string, ApiUser>, myId: string): ActiveTeamCardData {
   const leader = userMap[team.leader_id];
   const members = team.member_ids.map((id) => userMap[id]).filter(Boolean) as ApiUser[];
 
@@ -34,6 +34,7 @@ function buildCardData(team: ApiTeam, userMap: Record<string, ApiUser>): ActiveT
     maxMembers: team.max_members,
     memberAvatars: members.map((u) => u.avatar_url ?? "/avatar.png"),
     description: team.description,
+    isLeader: team.leader_id === myId,
     detailedMembers: members.map((u) => ({
       name: u.name,
       avatar: u.avatar_url ?? "/avatar.png",
@@ -63,7 +64,7 @@ export default function ActiveTeamsPage() {
         // ensure current user is always in the map (in case they're not in /users list)
         userMap[me._id] = me;
 
-        if (!cancelled) setTeams(apiTeams.map((t) => buildCardData(t, userMap)));
+        if (!cancelled) setTeams(apiTeams.map((t) => buildCardData(t, userMap, me._id)));
       } catch {
         if (!cancelled) router.replace("/login");
       } finally {

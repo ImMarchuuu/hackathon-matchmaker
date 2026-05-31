@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.models.base import PyObjectId
 from app.models.user import RoleName, UserPublicResponse
 
-TeamStatus = Literal["WAITING", "IN_PROGRESS"]
+TeamStatus = Literal["WAITING", "IN_PROGRESS", "COMPLETED", "CANCELLED"]
 
 
 # ─── Sub-documents ────────────────────────────────────────────────────────────
@@ -75,6 +75,24 @@ class TeamCreateRequest(BaseModel):
 class InviteMemberRequest(BaseModel):
     user_id: str
     role: RoleName
+
+
+class TeamUpdateRequest(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=3, max_length=100)
+    description: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    required_roles: Optional[list[RoleName]] = None
+    required_skills: Optional[list[str]] = None
+    max_members: Optional[int] = Field(default=None, ge=2, le=10)
+
+
+class TeamStatusUpdateRequest(BaseModel):
+    status: Literal["COMPLETED", "CANCELLED"]
+
+
+class AddMemberRequest(BaseModel):
+    user_id: str
 
 
 # ─── API response models ──────────────────────────────────────────────────────

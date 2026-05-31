@@ -10,6 +10,10 @@ NotificationType = Literal[
     "join_request",
     "request_approved",
     "request_rejected",
+    "team_invite",
+    "team_kicked",
+    "team_cancelled",
+    "team_completed",
 ]
 
 

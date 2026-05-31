@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
+import Link from "next/link";
 import { RoleIcon, SkillIcon } from "@/components/Icons";
 
 export interface DetailedMember {
@@ -295,9 +296,12 @@ export default function TeamCard({ data, onRequest, onCancel }: TeamCardProps) {
             </span>
           )}
           {data.joinStatus === "leader" && (
-            <span className="bg-[#eef1fa] text-[#1b3168] text-xs font-bold px-6 py-2 rounded-full">
-              YOUR TEAM
-            </span>
+            <Link
+              href={`/teams/${data.id}/manage`}
+              className="bg-[#1b3168] text-white text-xs font-bold px-6 py-2 rounded-full hover:bg-[#12224f] transition-colors"
+            >
+              MANAGE
+            </Link>
           )}
         </div>
       </div>

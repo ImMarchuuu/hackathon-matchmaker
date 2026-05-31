@@ -35,3 +35,24 @@ async def mark_all_read(db: AsyncIOMotorDatabase, user_id: ObjectId) -> None:
         {"user_id": user_id, "read": False},
         {"$set": {"read": True}},
     )
+
+
+async def delete_all_for_user(db: AsyncIOMotorDatabase, user_id: ObjectId) -> None:
+    await db["notifications"].delete_many({"user_id": user_id})
+
+
+async def stamp_request_resolved(
+    db: AsyncIOMotorDatabase,
+    leader_id: ObjectId,
+    request_id: str,
+    resolved_status: str,
+) -> None:
+    """Set payload.resolved_status on the leader's join_request notification."""
+    await db["notifications"].update_one(
+        {
+            "user_id": leader_id,
+            "type": "join_request",
+            "payload.request_id": request_id,
+        },
+        {"$set": {"payload.resolved_status": resolved_status}},
+    )

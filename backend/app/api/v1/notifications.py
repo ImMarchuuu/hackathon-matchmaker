@@ -25,3 +25,11 @@ async def mark_all_read(
     db: AsyncIOMotorDatabase = Depends(db_dependency),
 ) -> None:
     await notif_repo.mark_all_read(db, ObjectId(current_user_id))
+
+
+@router.delete("", status_code=204, summary="Delete all notifications")
+async def delete_all(
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+) -> None:
+    await notif_repo.delete_all_for_user(db, ObjectId(current_user_id))

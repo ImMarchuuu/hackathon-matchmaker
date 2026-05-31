@@ -17,7 +17,7 @@ export interface ApiTeam {
   _id: string;
   title: string;
   leader_id: string;
-  status: "WAITING" | "IN_PROGRESS";
+  status: "WAITING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
   start_date: string;
   end_date: string;
   days_left: number;

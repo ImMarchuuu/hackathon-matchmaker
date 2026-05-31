@@ -85,3 +85,33 @@ async def add_member(
         {"$addToSet": {"member_ids": user_id}},
         return_document=ReturnDocument.AFTER,
     )
+
+
+async def remove_member(
+    db: AsyncIOMotorDatabase,
+    team_id: ObjectId,
+    user_id: ObjectId,
+) -> dict | None:
+    from pymongo import ReturnDocument
+    return await db["teams"].find_one_and_update(
+        {"_id": team_id},
+        {"$pull": {"member_ids": user_id}},
+        return_document=ReturnDocument.AFTER,
+    )
+
+
+async def update_fields(
+    db: AsyncIOMotorDatabase,
+    team_id: ObjectId,
+    fields: dict,
+) -> dict | None:
+    from pymongo import ReturnDocument
+    return await db["teams"].find_one_and_update(
+        {"_id": team_id},
+        {"$set": fields},
+        return_document=ReturnDocument.AFTER,
+    )
+
+
+async def delete_team(db: AsyncIOMotorDatabase, team_id: ObjectId) -> None:
+    await db["teams"].delete_one({"_id": team_id})
