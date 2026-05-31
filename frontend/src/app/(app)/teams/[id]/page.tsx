@@ -179,31 +179,41 @@ export default function TeamDetailPage({ params }: { params: { id: string } }) {
                 ) : pendingRequests.map((req) => {
                   const requester = userMap[req.user_id];
                   return (
-                    <div key={req.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-white shadow-sm gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={requester?.avatar_url ?? "/avatar.png"} alt="" className="w-9 h-9 rounded-full object-cover border border-gray-200 shrink-0" />
-                        <div className="min-w-0">
-                          <p className="text-[#1b3168] font-bold text-sm truncate">{requester?.name ?? req.user_id}</p>
-                          {requester?.role[0] && <p className="text-gray-400 text-xs">{requester.role[0].name}</p>}
+                    <div key={req.id} className="flex flex-col gap-3 p-3 rounded-xl border border-gray-100 bg-white shadow-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <Link href={requester ? `/profile/${requester.username}` : "#"} className="flex items-center gap-3 min-w-0 group">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={requester?.avatar_url ?? "/avatar.png"} alt="" className="w-9 h-9 rounded-full object-cover border border-gray-200 shrink-0" />
+                          <p className="text-[#1b3168] font-bold text-sm truncate group-hover:text-[#2c52ed]">{requester?.name ?? req.user_id}</p>
+                        </Link>
+                        <div className="flex gap-2 shrink-0">
+                          <button
+                            onClick={() => resolveRequest(req.id, "approved")}
+                            disabled={resolvingId === req.id}
+                            className="px-3 py-1.5 rounded-full bg-[#1b3168] text-white text-xs font-bold hover:bg-[#12224f] disabled:opacity-50"
+                          >
+                            ✓ รับ
+                          </button>
+                          <button
+                            onClick={() => resolveRequest(req.id, "rejected")}
+                            disabled={resolvingId === req.id}
+                            className="px-3 py-1.5 rounded-full border border-red-300 text-red-500 text-xs font-bold hover:bg-red-50 disabled:opacity-50"
+                          >
+                            ✕ ปฏิเสธ
+                          </button>
                         </div>
                       </div>
-                      <div className="flex gap-2 shrink-0">
-                        <button
-                          onClick={() => resolveRequest(req.id, "approved")}
-                          disabled={resolvingId === req.id}
-                          className="px-3 py-1.5 rounded-full bg-[#1b3168] text-white text-xs font-bold hover:bg-[#12224f] disabled:opacity-50"
-                        >
-                          ✓ รับ
-                        </button>
-                        <button
-                          onClick={() => resolveRequest(req.id, "rejected")}
-                          disabled={resolvingId === req.id}
-                          className="px-3 py-1.5 rounded-full border border-red-300 text-red-500 text-xs font-bold hover:bg-red-50 disabled:opacity-50"
-                        >
-                          ✕ ปฏิเสธ
-                        </button>
-                      </div>
+
+                      {(req.roles.length > 0 || req.skills.length > 0) && (
+                        <div className="flex flex-wrap gap-1.5 pl-12">
+                          {req.roles.map((r) => (
+                            <span key={r} className="bg-blue-50 text-[#2c52ed] text-[11px] font-bold px-2.5 py-0.5 rounded-full">{r}</span>
+                          ))}
+                          {req.skills.map((s) => (
+                            <span key={s} className="bg-gray-100 text-gray-600 text-[11px] font-semibold px-2.5 py-0.5 rounded-full">{s}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

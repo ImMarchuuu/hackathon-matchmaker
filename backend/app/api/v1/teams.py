@@ -5,7 +5,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.db import db_dependency
 from app.core.deps import get_current_user_id
-from app.models.team import JoinRequestAction, TeamCreateRequest, TeamDetailResponse, TeamResponse
+from app.models.team import JoinRequestAction, JoinRequestCreate, TeamCreateRequest, TeamDetailResponse, TeamResponse
 from app.models.user import RoleName
 from app.services import team as team_service
 
@@ -46,10 +46,11 @@ async def get_team(
 @router.post("/{team_id}/requests", response_model=TeamResponse, status_code=201, summary="Send a join request")
 async def send_join_request(
     team_id: str,
+    payload: JoinRequestCreate,
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncIOMotorDatabase = Depends(db_dependency),
 ) -> TeamResponse:
-    return await team_service.send_join_request(db, team_id, current_user_id)
+    return await team_service.send_join_request(db, team_id, current_user_id, payload.roles, payload.skills)
 
 
 @router.patch("/{team_id}/requests/{req_id}", response_model=TeamResponse, summary="Approve or reject a join request")

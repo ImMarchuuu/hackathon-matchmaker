@@ -4,9 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import TeamCard from "@/components/team/TeamCard";
 import PersonCard from "@/components/team/PersonCard";
+import JoinRequestModal from "@/components/team/JoinRequestModal";
 import { useTeamsData } from "@/hooks/useTeamsData";
 import { apiFetch } from "@/lib/api";
 import type { ApiTeam } from "@/types/team";
+import type { TeamCardViewModel } from "@/types";
 
 type ActiveTab = "team" | "people";
 
@@ -20,21 +22,33 @@ export default function FindTeamPage() {
 
   const { teams, setTeams, people, isLoading } = useTeamsData();
 
+  const [requestTeam, setRequestTeam] = useState<TeamCardViewModel | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
   const toggleFilter = (role: string) => {
     setActiveFilters((prev) =>
       prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]
     );
   };
 
-  async function handleRequest(teamId: string) {
+  async function handleSubmitRequest(roles: string[], skills: string[]) {
+    if (!requestTeam) return;
+    const teamId = requestTeam.id;
+    setSubmitting(true);
     try {
-      const updated = await apiFetch<ApiTeam>(`/api/v1/teams/${teamId}/requests`, { method: "POST" });
+      const updated = await apiFetch<ApiTeam>(`/api/v1/teams/${teamId}/requests`, {
+        method: "POST",
+        body: JSON.stringify({ roles, skills }),
+      });
       const myReq = updated.join_requests.findLast((r) => r.status === "pending");
       setTeams((prev) => prev.map((t) =>
         t.id === teamId ? { ...t, joinStatus: "pending", myRequestId: myReq?.id } : t
       ));
+      setRequestTeam(null);
     } catch {
       // e.g. already pending — ignore
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -172,7 +186,7 @@ export default function FindTeamPage() {
                     joinStatus: team.joinStatus,
                     myRequestId: team.myRequestId,
                   }}
-                  onRequest={() => handleRequest(team.id)}
+                  onRequest={() => setRequestTeam(team)}
                   onCancel={() => team.myRequestId && handleCancel(team.id, team.myRequestId)}
                 />
               ))}
@@ -194,6 +208,17 @@ export default function FindTeamPage() {
           </div>
         )}
       </section>
+
+      {requestTeam && (
+        <JoinRequestModal
+          teamTitle={requestTeam.title}
+          availableRoles={requestTeam.roles}
+          availableSkills={requestTeam.skills}
+          saving={submitting}
+          onClose={() => setRequestTeam(null)}
+          onSubmit={handleSubmitRequest}
+        />
+      )}
     </div>
   );
 }

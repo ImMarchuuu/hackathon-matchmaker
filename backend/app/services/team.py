@@ -103,6 +103,8 @@ async def send_join_request(
     db: AsyncIOMotorDatabase,
     team_id: str,
     user_id: str,
+    roles: list[str],
+    skills: list[str],
 ) -> TeamResponse:
     if not ObjectId.is_valid(team_id) or not ObjectId.is_valid(user_id):
         raise HTTPException(status_code=422, detail="Invalid ID format")
@@ -127,7 +129,11 @@ async def send_join_request(
     if existing:
         raise HTTPException(status_code=409, detail="Request already pending")
 
-    request = JoinRequest(user_id=user_id).model_dump()
+    # Only keep selections that the team actually has open
+    valid_roles = [r for r in roles if r in doc.get("required_roles", [])]
+    valid_skills = [s for s in skills if s in doc.get("required_skills", [])]
+
+    request = JoinRequest(user_id=user_id, roles=valid_roles, skills=valid_skills).model_dump()
     updated = await team_repo.add_join_request(db, team_oid, request)
 
     # Notify the leader
@@ -139,6 +145,8 @@ async def send_join_request(
         "requester_name": requester.get("name", "") if requester else "",
         "requester_avatar": requester.get("avatar_url") if requester else None,
         "request_id": request["id"],
+        "roles": valid_roles,
+        "skills": valid_skills,
     })
 
     return TeamResponse.from_document(updated)

@@ -70,9 +70,32 @@ function NotificationPopup({ onClose }: { onClose: () => void }) {
       .finally(() => setLoading(false));
   }, []);
 
+  const [resolvingId, setResolvingId] = React.useState<string | null>(null);
+
   async function markAllRead() {
     await apiFetch("/api/v1/notifications/read-all", { method: "PATCH" }).catch(() => {});
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  }
+
+  async function resolveRequest(
+    notifId: string,
+    teamId: string,
+    reqId: string,
+    status: "approved" | "rejected",
+  ) {
+    setResolvingId(notifId);
+    try {
+      await apiFetch(`/api/v1/teams/${teamId}/requests/${reqId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status }),
+      });
+      // Drop the actioned request notification from the list
+      setNotifications((prev) => prev.filter((n) => n.id !== notifId));
+    } catch {
+      // ignore — request may already be resolved
+    } finally {
+      setResolvingId(null);
+    }
   }
 
   function fmtTime(iso: string) {
@@ -107,18 +130,47 @@ function NotificationPopup({ onClose }: { onClose: () => void }) {
           const unread = !notif.read;
 
           if (notif.type === "join_request") {
+            const canAct = !!p.team_id && !!p.request_id;
             return (
               <div key={notif.id} className={`flex flex-col gap-3 p-4 rounded-2xl border transition-colors ${unread ? "bg-[#f8faff] border-blue-100" : "bg-white border-gray-100"}`}>
-                <Link href={p.team_id ? `/teams/${p.team_id}` : "#"} onClick={onClose} className="flex gap-3 items-start">
+                <div className="flex gap-3 items-start">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={p.requester_avatar ?? "/avatar.png"} alt="" className="w-10 h-10 rounded-full object-cover border border-blue-100 shrink-0" />
-                  <div className="flex flex-col">
+                  <div className="flex flex-col min-w-0">
                     <p className="text-sm text-gray-700 leading-relaxed">
                       <span className="font-bold text-[#1b3168]">{p.requester_name}</span> ขอเข้าร่วมทีม <span className="font-bold text-[#1b3168]">{p.team_name}</span>
                     </p>
-                    <p className="text-[10px] text-gray-400 font-medium mt-0.5">{fmtTime(notif.created_at)}</p>
+                    {(p.roles?.length || p.skills?.length) ? (
+                      <div className="flex flex-wrap gap-1.5 mt-1.5">
+                        {p.roles?.map((r) => (
+                          <span key={r} className="bg-blue-50 text-[#2c52ed] text-[10px] font-bold px-2 py-0.5 rounded-full">{r}</span>
+                        ))}
+                        {p.skills?.map((s) => (
+                          <span key={s} className="bg-gray-100 text-gray-600 text-[10px] font-semibold px-2 py-0.5 rounded-full">{s}</span>
+                        ))}
+                      </div>
+                    ) : null}
+                    <p className="text-[10px] text-gray-400 font-medium mt-1">{fmtTime(notif.created_at)}</p>
                   </div>
-                </Link>
+                </div>
+                {canAct && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => resolveRequest(notif.id, p.team_id!, p.request_id!, "approved")}
+                      disabled={resolvingId === notif.id}
+                      className="flex-1 bg-[#233876] text-white py-2 rounded-xl text-xs font-bold tracking-wide hover:bg-[#1a2a5c] transition-colors shadow-sm disabled:opacity-50"
+                    >
+                      ตอบรับ
+                    </button>
+                    <button
+                      onClick={() => resolveRequest(notif.id, p.team_id!, p.request_id!, "rejected")}
+                      disabled={resolvingId === notif.id}
+                      className="flex-1 bg-white border border-gray-200 text-gray-700 py-2 rounded-xl text-xs font-bold tracking-wide hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
+                    >
+                      ปฏิเสธ
+                    </button>
+                  </div>
+                )}
               </div>
             );
           }

@@ -18,8 +18,15 @@ JoinRequestStatus = Literal["pending", "approved", "rejected"]
 class JoinRequest(BaseModel):
     id: str = Field(default_factory=lambda: uuid.uuid4().hex)
     user_id: str
+    roles: list[str] = []
+    skills: list[str] = []
     status: JoinRequestStatus = "pending"
     created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class JoinRequestCreate(BaseModel):
+    roles: list[str] = []
+    skills: list[str] = []
 
 
 class JoinRequestAction(BaseModel):

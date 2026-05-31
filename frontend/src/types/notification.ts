@@ -10,6 +10,8 @@ export interface ApiNotification {
     requester_name?: string;
     requester_avatar?: string | null;
     request_id?: string;
+    roles?: string[];
+    skills?: string[];
   };
   read: boolean;
   created_at: string;

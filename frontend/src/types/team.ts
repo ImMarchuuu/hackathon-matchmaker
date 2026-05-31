@@ -6,6 +6,8 @@ export type JoinStatus = "leader" | "member" | "pending" | "rejected" | "open";
 export interface ApiJoinRequest {
   id: string;
   user_id: string;
+  roles: string[];
+  skills: string[];
   status: JoinRequestStatus;
   created_at: string;
 }
