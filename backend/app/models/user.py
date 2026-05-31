@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime
 from typing import Literal, Optional
 
@@ -34,6 +35,15 @@ class PortfolioEntry(BaseModel):
     role_description: str = ""
 
 
+class CompetitionExperience(BaseModel):
+    id: str = Field(default_factory=lambda: uuid.uuid4().hex)
+    competition_name: str = Field(min_length=1, max_length=120)
+    detail: str = Field(default="", max_length=600)
+    roles: list[RoleName] = Field(min_length=1)
+    skills: list[str] = []
+    contributor_ids: list[str] = []   # list of user _id strings
+
+
 class OAuthAccount(BaseModel):
     provider: OAuthProvider
     provider_id: str
@@ -64,6 +74,7 @@ class UserDocument(BaseModel):
     role: list[RoleEntry] = []
     skills: list[SkillEntry] = []
     portfolios: list[PortfolioEntry] = []
+    competition_experiences: list[CompetitionExperience] = []
     oauth_accounts: list[OAuthAccount] = []
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -98,7 +109,47 @@ class AddPortfolioRequest(BaseModel):
     role_description: str = ""
 
 
+class AddCompetitionRequest(BaseModel):
+    competition_name: str = Field(min_length=1, max_length=120)
+    detail: str = Field(default="", max_length=600)
+    roles: list[RoleName] = Field(min_length=1)
+    skills: list[str] = []
+    contributor_ids: list[str] = []
+
+
 # ─── API response models ──────────────────────────────────────────────────────
+
+class SkillRankEntry(BaseModel):
+    """Single skill with live-computed rank and within-tier progress."""
+    name: str
+    project_count: int
+    tier: int
+    rank_title: str
+    progress_current: int   # projects accumulated within current tier
+    progress_total: int     # projects needed to fill current tier (−1 when max)
+    is_max: bool            # True when Diamond and no further tier exists
+
+
+class RoleRankEntry(BaseModel):
+    """Single role with live-computed rank."""
+    name: str
+    project_count: int
+    tier: int
+    rank_title: str
+
+
+class RankSummaryResponse(BaseModel):
+    """Aggregated rank data for the skill-bank and profile pages."""
+    rank_overall: str
+    skills: list[SkillRankEntry]
+    roles: list[RoleRankEntry]
+    behavioral_rates: float
+
+
+class FavoriteToggleResponse(BaseModel):
+    target_id: str
+    favorited: bool
+
 
 class UserPublicResponse(BaseModel):
     """Safe to return — no password_hash, no oauth tokens."""
@@ -121,6 +172,7 @@ class UserPublicResponse(BaseModel):
     role: list[RoleEntry]
     skills: list[SkillEntry]
     portfolios: list[PortfolioEntry]
+    competition_experiences: list[CompetitionExperience] = []
 
     @classmethod
     def from_document(cls, doc: dict) -> "UserPublicResponse":

@@ -1,86 +1,132 @@
 "use client";
 
-import ActiveTeamCard, { ActiveTeamCardData } from "@/components/team/ActiveTeamCard";
-import { CURRENT_USER_ID, mockTeams, mockUsers } from "@/data/mockData";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api";
+import ActiveTeamCard, { ActiveTeamCardData } from "@/components/team/ActiveTeamCard";
+import type { ApiUser } from "@/types/profile";
+import type { ApiTeam } from "@/types/team";
 
-// Build view-model from normalized Team data
-function buildActiveCardData(team: typeof mockTeams[0]): ActiveTeamCardData {
-  const leader = mockUsers[team.leaderId];
-  const start = new Date(team.startDate).toLocaleDateString("en-GB", {
-    day: "numeric", month: "short", year: "numeric",
-  });
-  const end = new Date(team.endDate).toLocaleDateString("en-GB", {
-    day: "numeric", month: "short", year: "numeric",
-  });
+function computeDaysLeft(endDate: string): number {
+  return Math.max(0, Math.ceil((new Date(endDate).getTime() - Date.now()) / 86_400_000));
+}
 
-  const memberAvatars = team.currentMemberIds
-    .map((uid) => mockUsers[uid]?.avatarUrl)
-    .filter(Boolean) as string[];
+function fmt(d: string): string {
+  return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+}
 
-  const detailedMembers = team.currentMemberIds
-    .map((uid) => mockUsers[uid])
-    .filter(Boolean)
-    .map((u) => ({
-      name: u.name,
-      avatar: u.avatarUrl,
-      role: u.roles[0],
-      score: u.skillBank.softSkillScore,
-    }));
+function buildCardData(team: ApiTeam, userMap: Record<string, ApiUser>, myId: string): ActiveTeamCardData {
+  const leader = userMap[team.leader_id];
+  const members = team.member_ids.map((id) => userMap[id]).filter(Boolean) as ApiUser[];
 
   return {
-    id: team.id,
-    avatarUrl: leader?.avatarUrl ?? "https://i.pravatar.cc/150",
+    id: team._id,
+    avatarUrl: leader?.avatar_url ?? "/avatar.png",
     title: team.title,
     authorName: leader?.name ?? "Unknown",
-    dateRange: `${start} - ${end}`,
-    daysLeft: team.daysLeft,
+    dateRange: `${fmt(team.start_date)} - ${fmt(team.end_date)}`,
+    daysLeft: computeDaysLeft(team.end_date),
     status: team.status,
-    roles: team.requiredRoles,
-    skills: team.requiredSkills,
-    currentMembers: team.currentMemberIds.length,
-    maxMembers: team.maxMembers,
-    memberAvatars,
+    roles: team.required_roles,
+    skills: team.required_skills,
+    currentMembers: team.member_ids.length,
+    maxMembers: team.max_members,
+    memberAvatars: members.map((u) => u.avatar_url ?? "/avatar.png"),
     description: team.description,
-    detailedMembers,
+    isLeader: team.leader_id === myId,
+    detailedMembers: members.map((u) => ({
+      name: u.name,
+      avatar: u.avatar_url ?? "/avatar.png",
+      role: u.role[0]?.name ?? "Member",
+      score: u.behavioral_rates,
+    })),
   };
 }
 
 export default function ActiveTeamsPage() {
-  // Only show teams where the current user is a member
-  const myTeams = mockTeams.filter((t) =>
-    t.currentMemberIds.includes(CURRENT_USER_ID)
-  );
+  const router = useRouter();
+  const [teams, setTeams] = useState<ActiveTeamCardData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const me = await apiFetch<ApiUser>("/api/v1/users/me");
+        const [apiTeams, apiUsers] = await Promise.all([
+          apiFetch<ApiTeam[]>(`/api/v1/users/${me._id}/teams`),
+          apiFetch<ApiUser[]>("/api/v1/users"),
+        ]);
+
+        const userMap = Object.fromEntries(apiUsers.map((u) => [u._id, u]));
+        // ensure current user is always in the map (in case they're not in /users list)
+        userMap[me._id] = me;
+
+        if (!cancelled) setTeams(apiTeams.map((t) => buildCardData(t, userMap, me._id)));
+      } catch {
+        if (!cancelled) router.replace("/login");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => { cancelled = true; };
+  }, [router]);
+
+  const inProgress = teams.filter((t) => t.status === "IN_PROGRESS").length;
+  const waiting = teams.filter((t) => t.status === "WAITING").length;
+
+  if (loading) {
+    return (
+      <div className="w-full space-y-8 pb-12">
+        <div className="h-8 w-48 bg-gray-200 rounded animate-pulse" />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {[1, 2].map((i) => (
+            <div key={i} className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 h-48 animate-pulse">
+              <div className="flex gap-4">
+                <div className="w-16 h-16 rounded-full bg-gray-200 shrink-0" />
+                <div className="flex-1 space-y-2 pt-1">
+                  <div className="h-4 bg-gray-200 rounded w-3/4" />
+                  <div className="h-3 bg-gray-200 rounded w-1/2" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full space-y-8 pb-12">
       {/* ── Header ── */}
       <div>
-        <h1 className="text-2xl font-extrabold text-[#1b3168] tracking-tight">
-          ทีมที่เข้าร่วม
-        </h1>
-        <p className="text-sm text-gray-500 font-medium mt-0.5">
-          {myTeams.length} ทีม
-        </p>
+        <h1 className="text-2xl font-extrabold text-[#1b3168] tracking-tight">ทีมที่เข้าร่วม</h1>
+        <p className="text-sm text-gray-500 font-medium mt-0.5">{teams.length} ทีม</p>
       </div>
 
       {/* ── Status Summary Pills ── */}
-      <div className="flex gap-3 flex-wrap">
-        <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-600 text-xs font-bold px-4 py-2 rounded-full">
-          <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-          กำลังแข่งขัน {myTeams.filter((t) => t.status === "IN_PROGRESS").length} ทีม
+      {teams.length > 0 && (
+        <div className="flex gap-3 flex-wrap">
+          <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-600 text-xs font-bold px-4 py-2 rounded-full">
+            <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            กำลังแข่งขัน {inProgress} ทีม
+          </div>
+          <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 text-orange-600 text-xs font-bold px-4 py-2 rounded-full">
+            <span className="w-2 h-2 rounded-full bg-orange-400" />
+            รอเริ่ม {waiting} ทีม
+          </div>
         </div>
-        <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 text-orange-600 text-xs font-bold px-4 py-2 rounded-full">
-          <span className="w-2 h-2 rounded-full bg-orange-400" />
-          รอเริ่ม {myTeams.filter((t) => t.status === "WAITING").length} ทีม
-        </div>
-      </div>
+      )}
 
       {/* ── Card Grid ── */}
-      {myTeams.length > 0 ? (
+      {teams.length > 0 ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full items-start">
-          {myTeams.map((team) => (
-            <ActiveTeamCard key={team.id} data={buildActiveCardData(team)} />
+          {teams.map((team) => (
+            <ActiveTeamCard key={team.id} data={team} />
           ))}
         </div>
       ) : (

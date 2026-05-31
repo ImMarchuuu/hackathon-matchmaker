@@ -4,6 +4,12 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 _SAFE_PROJECTION = {"password_hash": 0, "oauth_accounts": 0}
 
 
+async def delete_user(db: AsyncIOMotorDatabase, user_id: ObjectId) -> None:
+    await db["users"].delete_one({"_id": user_id})
+    # Remove this user from everyone else's favorite_ids
+    await db["users"].update_many({}, {"$pull": {"favorite_ids": user_id}})
+
+
 async def get_all(
     db: AsyncIOMotorDatabase,
     *,
@@ -39,6 +45,99 @@ async def get_by_email(db: AsyncIOMotorDatabase, email: str) -> dict | None:
 
 async def create(db: AsyncIOMotorDatabase, doc: dict) -> None:
     await db["users"].insert_one(doc)
+
+
+async def update_image(
+    db: AsyncIOMotorDatabase,
+    user_id: ObjectId,
+    field: str,
+    url: str,
+) -> dict | None:
+    from pymongo import ReturnDocument
+    return await db["users"].find_one_and_update(
+        {"_id": user_id},
+        {"$set": {field: url}},
+        return_document=ReturnDocument.AFTER,
+        projection=_SAFE_PROJECTION,
+    )
+
+
+async def add_competition(
+    db: AsyncIOMotorDatabase,
+    user_id: ObjectId,
+    entry: dict,
+) -> dict | None:
+    from pymongo import ReturnDocument
+    return await db["users"].find_one_and_update(
+        {"_id": user_id},
+        {"$push": {"competition_experiences": entry}},
+        return_document=ReturnDocument.AFTER,
+        projection=_SAFE_PROJECTION,
+    )
+
+
+async def update_competition(
+    db: AsyncIOMotorDatabase,
+    user_id: ObjectId,
+    comp_id: str,
+    entry: dict,
+) -> dict | None:
+    from pymongo import ReturnDocument
+    return await db["users"].find_one_and_update(
+        {"_id": user_id, "competition_experiences.id": comp_id},
+        {"$set": {"competition_experiences.$": entry}},
+        return_document=ReturnDocument.AFTER,
+        projection=_SAFE_PROJECTION,
+    )
+
+
+async def remove_competition(
+    db: AsyncIOMotorDatabase,
+    user_id: ObjectId,
+    comp_id: str,
+) -> dict | None:
+    from pymongo import ReturnDocument
+    return await db["users"].find_one_and_update(
+        {"_id": user_id},
+        {"$pull": {"competition_experiences": {"id": comp_id}}},
+        return_document=ReturnDocument.AFTER,
+        projection=_SAFE_PROJECTION,
+    )
+
+
+async def toggle_favorite(
+    db: AsyncIOMotorDatabase,
+    me_id: ObjectId,
+    target_id: ObjectId,
+) -> bool:
+    """Toggle target_id in favorite_ids. Returns True if now favorited."""
+    user = await db["users"].find_one({"_id": me_id}, {"favorite_ids": 1})
+    current = user.get("favorite_ids", []) if user else []
+    if target_id in current:
+        await db["users"].update_one({"_id": me_id}, {"$pull": {"favorite_ids": target_id}})
+        return False
+    else:
+        await db["users"].update_one({"_id": me_id}, {"$addToSet": {"favorite_ids": target_id}})
+        return True
+
+
+async def remove_favorite(
+    db: AsyncIOMotorDatabase,
+    me_id: ObjectId,
+    target_id: ObjectId,
+) -> None:
+    await db["users"].update_one({"_id": me_id}, {"$pull": {"favorite_ids": target_id}})
+
+
+async def get_favorites(
+    db: AsyncIOMotorDatabase,
+    me_id: ObjectId,
+) -> list[dict]:
+    user = await db["users"].find_one({"_id": me_id}, {"favorite_ids": 1})
+    if not user or not user.get("favorite_ids"):
+        return []
+    cursor = db["users"].find({"_id": {"$in": user["favorite_ids"]}}, _SAFE_PROJECTION)
+    return await cursor.to_list(length=None)
 
 
 async def update_profile(

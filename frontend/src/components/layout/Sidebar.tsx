@@ -2,31 +2,51 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { CURRENT_USER_ID, mockUsers, mockTeams } from "@/data/mockData";
+import { useEffect, useState } from "react";
+import { apiFetch } from "@/lib/api";
+import type { ApiUser } from "@/types/profile";
+import type { ApiTeam } from "@/types/team";
 
 export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
   const [isSkillBankOpen, setSkillBankOpen] = useState(false);
   const [isFindTeamOpen, setFindTeamOpen] = useState(false);
 
-  const currentUser = mockUsers[CURRENT_USER_ID];
-  const skillBank = currentUser?.skillBank;
-  const activeRoleCount = skillBank
-    ? Object.values(skillBank.roleMastery).filter((v) => v > 0).length
-    : 0;
-  const rankOverall = skillBank?.rankOverall ?? "Bronze";
-  const hardSkillCount = skillBank?.hardSkills.length ?? 0;
+  const [user, setUser] = useState<ApiUser | null>(null);
+  const [teams, setTeams] = useState<ApiTeam[]>([]);
+  const [userMap, setUserMap] = useState<Record<string, ApiUser>>({});
 
-  // Derive active teams for current user (cap at 3 for sidebar UI)
-  const myActiveTeams = mockTeams
-    .filter((t) => t.currentMemberIds.includes(CURRENT_USER_ID))
-    .slice(0, 3);
+  useEffect(() => {
+    apiFetch<ApiUser>("/api/v1/users/me")
+      .then(async (me) => {
+        setUser(me);
+        const [apiTeams, apiUsers] = await Promise.all([
+          apiFetch<ApiTeam[]>(`/api/v1/users/${me._id}/teams`),
+          apiFetch<ApiUser[]>("/api/v1/users"),
+        ]);
+        setTeams(apiTeams.slice(0, 3));
+        setUserMap(Object.fromEntries(apiUsers.map((u) => [u._id, u])));
+      })
+      .catch(() => {});
+  }, []);
 
-  // Avatar list derived values — computed here to avoid IIFE in JSX
-  const MAX_VISIBLE = 3;
-  const visibleTeams = myActiveTeams.slice(0, MAX_VISIBLE);
-  const remainingCount = myActiveTeams.length - MAX_VISIBLE;
+  const visibleTeams = teams.slice(0, 3);
+  const remainingCount = Math.max(0, teams.length - 3);
+
+  const rankOverall = user?.rank_overall ?? "Bronze";
+  const roleCount   = user?.role.length ?? 0;
+  const skillCount  = user?.skills.length ?? 0;
+
+  async function handleLogout() {
+    try {
+      await apiFetch("/api/v1/auth/logout", { method: "POST" });
+    } catch {
+      // fail-safe — still clear and redirect
+    }
+    document.cookie = "grandline_auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    onClose?.();
+    window.location.href = "/login";
+  }
 
   return (
     <>
@@ -41,7 +61,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
         aria-hidden="true"
       />
 
-      {/* ── Sidebar panel (Mobile Drawer only) ── */}
+      {/* ── Sidebar panel ── */}
       <aside
         className={`
           fixed top-0 bottom-0 left-0 w-[75%] max-w-sm bg-white shadow-xl flex flex-col z-50 overflow-y-auto
@@ -49,14 +69,14 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
         `}
       >
-        {/* Header / Brand area with close button */}
+        {/* Header */}
         <div className="flex items-center justify-between p-6 pb-4 bg-theme-gradient">
           <div className="flex items-center gap-2">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/Logo.svg" alt="Grand Line Logo" className="h-7 object-contain" />
           </div>
           <button
-            className="p-2 text-[#ffffff] hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 text-white hover:bg-white/10 rounded-full transition-colors"
             onClick={onClose}
             aria-label="Close menu"
           >
@@ -70,22 +90,22 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
         <Link href="/profile" onClick={onClose} className="px-6 py-4 flex items-center gap-4 hover:bg-gray-50 transition-colors">
           <div className="w-16 h-16 rounded-full overflow-hidden border border-gray-200 shadow-sm shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/avatar.png" alt="Profile" className="w-full h-full object-cover" />
+            <img src={user?.avatar_url ?? "/avatar.png"} alt="Profile" className="w-full h-full object-cover" />
           </div>
           <div>
-            <h2 className="text-[#233876] font-black text-lg">Murchy D.Luffy</h2>
+            <h2 className="text-[#233876] font-black text-lg">
+              {user?.name ?? <span className="inline-block w-28 h-5 bg-gray-200 rounded animate-pulse" />}
+            </h2>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#eef4ff] text-[#2c52ed] rounded-full text-xs font-bold mt-1">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-              </svg>
-              Teammate 30
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`/${rankOverall.toLowerCase()}.svg`} alt={rankOverall} className="w-3.5 h-3.5 object-contain" />
+              {rankOverall}
             </div>
           </div>
         </Link>
 
         {/* ── YOUR ACTIVE TEAM ── */}
         <div className="px-6 py-4 border-b border-gray-100">
-          {/* Header row */}
           <div className="flex items-center justify-between mb-4">
             <Link
               href="/active-teams"
@@ -94,31 +114,26 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
             >
               Your Active Team
             </Link>
-            <Link
-              href="/active-teams"
-              onClick={onClose}
-              className="text-[#2c52ed] text-xs font-bold hover:underline"
-            >
+            <Link href="/active-teams" onClick={onClose} className="text-[#2c52ed] text-xs font-bold hover:underline">
               See All
             </Link>
           </div>
 
-          {/* Horizontal avatar list */}
-          {myActiveTeams.length > 0 ? (
+          {visibleTeams.length > 0 ? (
             <div className="flex flex-row gap-4 items-start">
               {visibleTeams.map((team) => {
-                const leader = mockUsers[team.leaderId];
+                const leader = userMap[team.leader_id];
                 return (
                   <Link
-                    key={team.id}
-                    href={`/teams/${team.id}`}
+                    key={team._id}
+                    href={`/teams/${team._id}`}
                     onClick={onClose}
                     className="flex flex-col items-center w-14 shrink-0 group cursor-pointer"
                   >
                     <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-[#1b3168] shrink-0 group-hover:border-[#2c52ed] transition-colors">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={leader?.avatarUrl ?? "https://i.pravatar.cc/150"}
+                        src={leader?.avatar_url ?? "/avatar.png"}
                         alt={team.title}
                         className="w-full h-full object-cover"
                       />
@@ -130,7 +145,6 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
                 );
               })}
 
-              {/* Overflow +n bubble */}
               {remainingCount > 0 && (
                 <Link
                   href="/active-teams"
@@ -151,8 +165,6 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
 
         {/* ── Navigation Menu ── */}
         <nav className="flex-1 flex flex-col py-2 px-4" aria-label="Main navigation">
-          
-          
 
           {/* FIND TEAM */}
           <div className="border-b border-gray-50 py-2">
@@ -161,7 +173,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
                 FIND TEAM
               </Link>
               <button onClick={() => setFindTeamOpen(!isFindTeamOpen)} className="p-1 text-[#1b3168]">
-                <svg className={`w-5 h-5 transition-transform ${isFindTeamOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                <svg className={`w-5 h-5 transition-transform ${isFindTeamOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
@@ -179,31 +191,32 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
               </div>
             )}
           </div>
-            {/* SKILL BANK */}
+
+          {/* SKILL BANK */}
           <div className="border-b border-gray-50 py-2">
             <div className="flex items-center justify-between px-2 py-3">
               <Link href="/skill-bank" onClick={onClose} className="text-[#1b3168] font-black tracking-wider uppercase text-sm hover:text-[#2c52ed]">
                 SKILL BANK
               </Link>
               <button onClick={() => setSkillBankOpen(!isSkillBankOpen)} className="p-1 text-[#1b3168]">
-                <svg className={`w-5 h-5 transition-transform ${isSkillBankOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                <svg className={`w-5 h-5 transition-transform ${isSkillBankOpen ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
             </div>
             {isSkillBankOpen && (
               <div className="mx-2 mb-4 mt-2 bg-[#f9fafb] border border-gray-100 rounded-2xl p-4 flex justify-between items-center">
-                {/* Stat 1: Active Roles */}
+                {/* Role count */}
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-12 h-12 bg-[#1b3168] rounded-full flex items-center justify-center text-white">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                   </div>
                   <div className="text-center">
-                    <div className="text-[#1b3168] font-black text-sm">{activeRoleCount}</div>
+                    <div className="text-[#1b3168] font-black text-sm">{roleCount}</div>
                     <div className="text-gray-500 text-[10px] font-bold">Role</div>
                   </div>
                 </div>
-                {/* Stat 2: Rank Overall with correct medal SVG */}
+                {/* Rank overall */}
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-12 h-12 flex items-center justify-center">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -214,19 +227,20 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
                     <div className="text-gray-500 text-[10px] font-bold">Rank</div>
                   </div>
                 </div>
-                {/* Stat 3: Hard Skill count */}
+                {/* Skill count */}
                 <div className="flex flex-col items-center gap-2">
                   <div className="w-12 h-12 bg-[#1b3168] rounded-full flex items-center justify-center text-white">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
                   </div>
                   <div className="text-center">
-                    <div className="text-[#1b3168] font-black text-sm">{hardSkillCount}</div>
-                    <div className="text-gray-500 text-[10px] font-bold">Hard skill</div>
+                    <div className="text-[#1b3168] font-black text-sm">{skillCount}</div>
+                    <div className="text-gray-500 text-[10px] font-bold">Skills</div>
                   </div>
                 </div>
               </div>
             )}
           </div>
+
           {/* SAVED */}
           <div className="border-b border-gray-50 py-2">
             <div className="flex items-center px-2 py-3">
@@ -235,6 +249,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
               </Link>
             </div>
           </div>
+
           {/* SETTINGS */}
           <div className="border-b border-gray-50 py-2">
             <div className="flex items-center px-2 py-3">
@@ -247,18 +262,14 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
 
         {/* ── Log out ── */}
         <div className="p-6 mt-auto">
-          <button 
-            onClick={() => {
-              document.cookie = "grandline_auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-              window.location.href = "/login";
-              onClose?.();
-            }}
+          <button
+            onClick={handleLogout}
             className="flex items-center justify-center gap-2 border border-red-500 rounded-full px-6 py-2.5 w-full max-w-[80%] mx-auto font-bold text-red-500 hover:bg-red-500 hover:text-white active:bg-red-600 active:text-white transition-all duration-200"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
             </svg>
-            Log out
+            Logout
           </button>
         </div>
       </aside>

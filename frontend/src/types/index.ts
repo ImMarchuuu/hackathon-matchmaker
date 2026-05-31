@@ -1,4 +1,4 @@
-import type { Role, TeamStatus } from "@/data/mockData";
+import type { Role } from "@/data/mockData";
 
 // ─── Skill Bank ────────────────────────────────────────────────────────────────
 export type SkillRank = "Bronze" | "Silver" | "Gold" | "Diamond";
@@ -73,14 +73,17 @@ export interface TeamCardViewModel {
   memberAvatars: string[];
   description?: string;
   detailedMembers: { name: string; avatar: string; role: string; score: number }[];
+  joinStatus: "leader" | "member" | "pending" | "rejected" | "open";
+  myRequestId?: string;  // req id when pending — needed to cancel
 }
 
 export interface PeopleCardViewModel {
   id: string;
+  username: string;
   name: string;
   bio: string;
   avatarUrl: string;
   roleTags: string[];
   skillTags: string[];
-  isFavorited?: boolean;
+  isFavorited: boolean;
 }

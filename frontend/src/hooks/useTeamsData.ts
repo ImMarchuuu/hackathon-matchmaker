@@ -7,24 +7,39 @@ import type { ApiTeam } from "@/types/team";
 import type { TeamCardViewModel, PeopleCardViewModel } from "@/types";
 
 function computeDaysLeft(endDate: string): number {
-  const diff = new Date(endDate).getTime() - Date.now();
-  return Math.max(0, Math.ceil(diff / 86_400_000));
+  return Math.max(0, Math.ceil((new Date(endDate).getTime() - Date.now()) / 86_400_000));
 }
 
 function fmt(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  return new Date(dateStr).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
 function buildTeamViewModel(
   team: ApiTeam,
   userMap: Record<string, ApiUser>,
+  meId: string | null,
 ): TeamCardViewModel {
   const leader = userMap[team.leader_id];
   const members = team.member_ids.map((id) => userMap[id]).filter(Boolean) as ApiUser[];
+
+  let joinStatus: TeamCardViewModel["joinStatus"] = "open";
+  let myRequestId: string | undefined;
+
+  if (meId) {
+    if (team.leader_id === meId) {
+      joinStatus = "leader";
+    } else if (team.member_ids.includes(meId)) {
+      joinStatus = "member";
+    } else {
+      const myReq = team.join_requests?.find((r) => r.user_id === meId);
+      if (myReq?.status === "pending") {
+        joinStatus = "pending";
+        myRequestId = myReq.id;
+      } else if (myReq?.status === "rejected") {
+        joinStatus = "rejected";
+      }
+    }
+  }
 
   return {
     id: team._id,
@@ -45,18 +60,21 @@ function buildTeamViewModel(
       role: u.role[0]?.name ?? "Member",
       score: u.behavioral_rates,
     })),
+    joinStatus,
+    myRequestId,
   };
 }
 
-function buildPeopleViewModel(user: ApiUser): PeopleCardViewModel {
+function buildPeopleViewModel(user: ApiUser, favoriteIds: Set<string>): PeopleCardViewModel {
   return {
     id: user._id,
+    username: user.username,
     name: user.name,
     bio: user.bio ?? "",
     avatarUrl: user.avatar_url ?? "/avatar.png",
     roleTags: user.role.map((r) => r.name),
     skillTags: user.skills.map((s) => s.name),
-    isFavorited: false,
+    isFavorited: favoriteIds.has(user._id),
   };
 }
 
@@ -72,16 +90,20 @@ export function useTeamsData() {
     async function load() {
       try {
         setIsLoading(true);
-        const [apiTeams, apiUsers] = await Promise.all([
+        const [apiTeams, apiUsers, apiFavorites, me] = await Promise.all([
           apiFetch<ApiTeam[]>("/api/v1/teams"),
           apiFetch<ApiUser[]>("/api/v1/users"),
+          apiFetch<ApiUser[]>("/api/v1/users/me/favorites").catch(() => [] as ApiUser[]),
+          apiFetch<ApiUser>("/api/v1/users/me").catch(() => null),
         ]);
 
         const userMap = Object.fromEntries(apiUsers.map((u) => [u._id, u]));
+        const favoriteIds = new Set(apiFavorites.map((u) => u._id));
+        const meId = me?._id ?? null;
 
         if (!cancelled) {
-          setTeams(apiTeams.map((t) => buildTeamViewModel(t, userMap)));
-          setPeople(apiUsers.map(buildPeopleViewModel));
+          setTeams(apiTeams.map((t) => buildTeamViewModel(t, userMap, meId)));
+          setPeople(apiUsers.map((u) => buildPeopleViewModel(u, favoriteIds)));
         }
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load data");
@@ -94,5 +116,5 @@ export function useTeamsData() {
     return () => { cancelled = true; };
   }, []);
 
-  return { teams, people, isLoading, error };
+  return { teams, setTeams, people, isLoading, error };
 }

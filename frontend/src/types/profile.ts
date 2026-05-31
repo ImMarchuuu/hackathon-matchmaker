@@ -30,6 +30,15 @@ export interface ApiSkillEntry {
   rank_title: string;
 }
 
+export interface ApiCompetitionExperience {
+  id: string;
+  competition_name: string;
+  detail: string;
+  roles: string[];
+  skills: string[];
+  contributor_ids: string[];
+}
+
 export interface ApiUser {
   _id: string;
   username: string;
@@ -48,6 +57,7 @@ export interface ApiUser {
   role: ApiRoleEntry[];
   skills: ApiSkillEntry[];
   portfolios: unknown[];
+  competition_experiences: ApiCompetitionExperience[];
 }
 
 export interface CompetitionItem {

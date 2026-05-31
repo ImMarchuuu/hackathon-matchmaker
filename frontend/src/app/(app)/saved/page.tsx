@@ -1,54 +1,82 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { apiFetch } from "@/lib/api";
 import SavedPersonCard from "@/components/saved/SavedPersonCard";
-import { mockUsers, savedUserIds, User } from "@/data/mockData";
+import type { ApiUser } from "@/types/profile";
 
 export default function SavedPage() {
-  const [savedIds, setSavedIds] = useState<string[]>(savedUserIds);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const router = useRouter();
+  const [favorites, setFavorites] = useState<ApiUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedUser, setSelectedUser] = useState<ApiUser | null>(null);
+  const [removing, setRemoving] = useState(false);
 
-  const savedUsers = savedIds
-    .map((id) => mockUsers[id])
-    .filter(Boolean);
-
-  const handleUnsaveClick = (user: User) => {
-    setSelectedUser(user);
-    setIsModalOpen(true);
-  };
-
-  const handleConfirmRemove = () => {
-    if (selectedUser) {
-      setSavedIds((prev) => prev.filter((id) => id !== selectedUser.id));
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const data = await apiFetch<ApiUser[]>("/api/v1/users/me/favorites");
+        if (!cancelled) setFavorites(data);
+      } catch {
+        if (!cancelled) router.replace("/login");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
-    setIsModalOpen(false);
-    setSelectedUser(null);
-  };
+    load();
+    return () => { cancelled = true; };
+  }, [router]);
 
-  const handleCancel = () => {
-    setIsModalOpen(false);
-    setSelectedUser(null);
-  };
+  async function handleConfirmRemove() {
+    if (!selectedUser || removing) return;
+    setRemoving(true);
+    try {
+      await apiFetch(`/api/v1/users/${selectedUser._id}/favorite`, { method: "POST" });
+      setFavorites((prev) => prev.filter((u) => u._id !== selectedUser._id));
+    } finally {
+      setRemoving(false);
+      setSelectedUser(null);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6 w-full pb-8">
+        <div className="h-8 w-40 bg-gray-200 rounded animate-pulse" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden animate-pulse">
+              <div className="h-28 bg-gray-200" />
+              <div className="p-5 pt-10 space-y-2">
+                <div className="h-4 bg-gray-200 rounded w-2/3" />
+                <div className="h-3 bg-gray-200 rounded w-1/3" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 w-full pb-8">
       {/* ── Header ── */}
       <div>
         <h1 className="text-2xl font-extrabold text-[#1b3168] tracking-tight">Saved People</h1>
-        <p className="text-sm text-gray-500 font-medium">{savedUsers.length} people saved</p>
+        <p className="text-sm text-gray-500 font-medium">{favorites.length} people saved</p>
       </div>
 
       {/* ── Grid ── */}
-      {savedUsers.length > 0 ? (
+      {favorites.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {savedUsers.map((user, idx) => (
+          {favorites.map((user) => (
             <SavedPersonCard
-              key={user.id}
+              key={user._id}
               user={user}
-              teammateCount={10 + idx * 5}
-              onUnsaveClick={() => handleUnsaveClick(user)}
+              onUnsaveClick={() => setSelectedUser(user)}
             />
           ))}
         </div>
@@ -69,29 +97,25 @@ export default function SavedPage() {
         </div>
       )}
 
-      {/* ═══════════════════════════════════════════
-          Unsave Confirmation Modal
-          ═══════════════════════════════════════════ */}
-      {isModalOpen && selectedUser && (
+      {/* ── Unsave Confirmation Modal ── */}
+      {selectedUser && (
         <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-200"
-          onClick={handleCancel}
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={() => !removing && setSelectedUser(null)}
         >
           <div
-            className="bg-white rounded-[2rem] shadow-2xl border border-gray-100 w-full max-w-sm p-8 flex flex-col items-center gap-6 animate-in zoom-in-95 duration-200"
+            className="bg-white rounded-[2rem] shadow-2xl border border-gray-100 w-full max-w-sm p-8 flex flex-col items-center gap-6"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Avatar */}
             <div className="w-20 h-20 rounded-full border-4 border-gray-100 overflow-hidden shadow-md">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={selectedUser.avatarUrl}
+                src={selectedUser.avatar_url ?? "/avatar.png"}
                 alt={selectedUser.name}
                 className="w-full h-full object-cover"
               />
             </div>
 
-            {/* Message */}
             <div className="text-center space-y-2">
               <h3 className="text-[#1b3168] font-extrabold text-lg">Remove from Saved?</h3>
               <p className="text-gray-500 text-sm leading-relaxed">
@@ -101,19 +125,20 @@ export default function SavedPage() {
               </p>
             </div>
 
-            {/* Actions */}
             <div className="flex gap-3 w-full">
               <button
-                onClick={handleCancel}
-                className="flex-1 py-3 rounded-full border-2 border-gray-200 bg-white text-gray-600 text-sm font-bold tracking-wide hover:bg-gray-50 transition-colors shadow-sm"
+                onClick={() => setSelectedUser(null)}
+                disabled={removing}
+                className="flex-1 py-3 rounded-full border-2 border-gray-200 bg-white text-gray-600 text-sm font-bold tracking-wide hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmRemove}
-                className="flex-1 py-3 rounded-full bg-red-500 text-white text-sm font-bold tracking-wide hover:bg-red-600 transition-colors shadow-md"
+                disabled={removing}
+                className="flex-1 py-3 rounded-full bg-red-500 text-white text-sm font-bold tracking-wide hover:bg-red-600 transition-colors shadow-md disabled:opacity-60"
               >
-                Confirm Remove
+                {removing ? "Removing…" : "Confirm Remove"}
               </button>
             </div>
           </div>

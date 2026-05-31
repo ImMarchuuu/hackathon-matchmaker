@@ -126,6 +126,7 @@ export default function LoginPage() {
 
       <button
         type="button"
+        onClick={() => { window.location.href = "/api/v1/auth/oauth/google"; }}
         className="w-full py-3 rounded-full border border-gray-200 bg-white flex items-center justify-center gap-3 font-semibold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm"
       >
         <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">

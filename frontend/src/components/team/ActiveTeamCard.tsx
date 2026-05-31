@@ -2,6 +2,7 @@
 
 import React, { useRef, useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { TeamStatus } from "@/data/mockData";
 
 export interface ActiveTeamCardData {
@@ -19,6 +20,7 @@ export interface ActiveTeamCardData {
   memberAvatars: string[];
   description?: string;
   detailedMembers?: { name: string; avatar: string; role: string; score: number }[];
+  isLeader?: boolean;
 }
 
 // ─── Shared abbreviation map ──────────────────────────────────────────────────
@@ -104,6 +106,7 @@ function DynamicTagList({ tags, textColorClass }: { tags: string[]; textColorCla
 
 // ─── ActiveTeamCard ───────────────────────────────────────────────────────────
 export default function ActiveTeamCard({ data }: { data: ActiveTeamCardData }) {
+  const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
   const isWaiting = data.status === "WAITING";
 
@@ -302,10 +305,22 @@ export default function ActiveTeamCard({ data }: { data: ActiveTeamCardData }) {
               </svg>
             </button>
 
-            {/* Status badge (replaces REQUEST button) */}
-            <div className={`px-4 py-2 rounded-full text-xs font-extrabold tracking-wide whitespace-nowrap ${statusBadgeClass}`}>
-              {statusLabel}
-            </div>
+            {data.isLeader ? (
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  router.push(`/teams/${data.id}/manage`);
+                }}
+                className="px-4 py-2 rounded-full text-xs font-extrabold tracking-wide whitespace-nowrap bg-[#1b3168] text-white hover:bg-[#12224f] transition-colors"
+              >
+                MANAGE
+              </button>
+            ) : (
+              <div className={`px-4 py-2 rounded-full text-xs font-extrabold tracking-wide whitespace-nowrap ${statusBadgeClass}`}>
+                {statusLabel}
+              </div>
+            )}
           </div>
         </div>
       </article>

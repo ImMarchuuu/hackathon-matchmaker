@@ -216,7 +216,7 @@ export interface DetailedMember {
 }
 
 // ─── Team (normalized — members reference User IDs) ───────────────────────────
-export type TeamStatus = "WAITING" | "IN_PROGRESS";
+export type TeamStatus = "WAITING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 
 export interface Team {
   id: string;
