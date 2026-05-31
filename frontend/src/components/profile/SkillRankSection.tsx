@@ -1,49 +1,52 @@
-import type { SkillItem } from "@/types/profile";
+import React from "react";
 
-/**
- * SKILL RANK section on the profile page.
- * Shows skill badges with rank icons (ship icons in Figma).
- * Skills come from the database — shows placeholder when empty.
- */
-
-interface SkillRankSectionProps {
-  skills?: SkillItem[];
+export interface SkillWithRank {
+  name: string;
+  rank: string; // "bronze", "silver", "gold", "diamond"
+  icon?: string;
 }
 
-export default function SkillRankSection({ skills = [] }: SkillRankSectionProps) {
+interface SkillRankSectionProps {
+  skills?: SkillWithRank[];
+}
+
+export default function SkillRankSection({ 
+  skills = [] 
+}: SkillRankSectionProps) {
+  
   return (
-    <section className="rounded-2xl border border-navy-100 bg-white p-6">
-      <h2 className="flex items-center gap-2 text-lg font-bold text-navy-700 mb-4">
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-        </svg>
+    <section className="relative rounded-[2rem] border border-gray-200 bg-white p-8 pt-12 flex-[1.5] shadow-sm mt-8">
+      {/* Absolute centered title pill overlapping top border */}
+      <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-white border border-gray-200 px-6 py-2 rounded-full flex items-center gap-2 shadow-sm text-[#1b3168] font-bold text-sm tracking-widest uppercase">
+        <span className="text-[#1b3168]">💠</span>
         SKILL RANK
-      </h2>
+      </div>
 
       {skills.length > 0 ? (
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 justify-items-center mt-2">
           {skills.map((skill) => (
             <div
               key={skill.name}
-              className="flex flex-col items-center gap-2 p-3 rounded-xl bg-navy-50"
+              className="flex flex-col items-center gap-3 p-2 transition-transform hover:scale-105"
             >
-              {/* TODO: Replace with actual skill rank badge image */}
-              <div className="w-16 h-16 rounded-full bg-amber-100 border-2 border-amber-300 flex items-center justify-center">
-                {skill.iconUrl ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img src={skill.iconUrl} alt={skill.name} className="w-12 h-12 object-contain" />
-                ) : (
-                  <span className="text-2xl">⛵</span>
-                )}
+              <div className="w-20 h-20 sm:w-25 sm:h-25 flex items-center justify-center transition-transform hover:scale-110">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img 
+                  src={`/${skill.rank}.svg`} 
+                  alt={skill.rank} 
+                  className="w-full h-full object-contain drop-shadow-md" 
+                />
               </div>
-              <span className="text-xs font-medium text-navy-700 text-center">{skill.name}</span>
+              <span className="text-xs sm:text-sm font-extrabold text-[#1b3168] text-center">{skill.name}</span>
             </div>
           ))}
         </div>
       ) : (
-        <p className="text-sm text-navy-300 italic">
-          No skills ranked yet — waiting for user data
-        </p>
+        <div className="flex flex-col items-center justify-center h-full min-h-[150px]">
+          <p className="text-sm text-gray-400 italic">
+            No skills charted yet.
+          </p>
+        </div>
       )}
     </section>
   );

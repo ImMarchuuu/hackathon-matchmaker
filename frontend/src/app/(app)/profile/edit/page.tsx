@@ -1,237 +1,375 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import AvatarPlaceholder from "@/components/shared/AvatarPlaceholder";
-import type { UserProfile } from "@/types/profile";
+import { useRouter } from "next/navigation";
+import { apiFetch } from "@/lib/api";
+import type { ApiUser } from "@/types/profile";
+import Toast from "@/components/shared/Toast";
 
-/**
- * Edit Profile page — form fields match the profile view sections.
- * Fields: avatar, cover photo, display name, bio, university, birthday,
- *         email, GitHub, LinkedIn, roles.
- */
+const ROLE_OPTIONS = [
+  "Developer",
+  "Business",
+  "UI/UX Designer",
+  "Marketing",
+  "AI / Data",
+  "Pitching",
+] as const;
 
-const availableRoles = [
-  "Frontend Dev",
-  "Backend Dev",
-  "AI Engineer",
-  "Data Engineer",
-  "UX/UI Designer",
-  "DevOps",
-  "Mobile Dev",
-  "Project Manager",
-];
+interface EditForm {
+  name: string;
+  bio: string;
+  university: string;
+  birth_date: string;
+  github: string;
+  linkedin: string;
+  roles: string[];
+}
 
 export default function EditProfilePage() {
-  const [form, setForm] = useState<Partial<UserProfile>>({
-    displayName: "",
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "error" | "success" } | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const [form, setForm] = useState<EditForm>({
+    name: "",
     bio: "",
     university: "",
-    birthday: "",
-    email: "",
-    githubUrl: "",
-    linkedinUrl: "",
+    birth_date: "",
+    github: "",
+    linkedin: "",
     roles: [],
   });
 
-  const handleChange = (field: keyof UserProfile, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+  useEffect(() => {
+    apiFetch<ApiUser>("/api/v1/users/me")
+      .then((user) => {
+        setAvatarUrl(user.avatar_url);
+        setCoverUrl(user.cover_image);
+        setForm({
+          name: user.name ?? "",
+          bio: user.bio ?? "",
+          university: user.university ?? "",
+          birth_date: user.birth_date ?? "",
+          github: user.github ?? "",
+          linkedin: user.linkedin ?? "",
+          roles: user.role.map((r) => r.name),
+        });
+      })
+      .catch(() => router.replace("/login"))
+      .finally(() => setLoading(false));
+  }, [router]);
+
+  const set = (field: keyof EditForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setForm((p) => ({ ...p, [field]: e.target.value }));
+
+  const toggleRole = (role: string) =>
+    setForm((p) => ({
+      ...p,
+      roles: p.roles.includes(role) ? p.roles.filter((r) => r !== role) : [...p.roles, role],
+    }));
+
+  const uploadImage = async (file: File, endpoint: string, setter: (url: string) => void, setUploading: (v: boolean) => void) => {
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const token = document.cookie.match(/(?:^|;\s*)grandline_auth=([^;]+)/)?.[1];
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      if (!res.ok) {
+        let message = "Upload failed";
+        try {
+          const body = await res.json();
+          if (body?.detail) message = String(body.detail);
+        } catch { /* ignore parse error */ }
+        setToast({ message, type: "error" });
+        return;
+      }
+      const user: ApiUser = await res.json();
+      setter(endpoint.includes("avatar") ? (user.avatar_url ?? "") : (user.cover_image ?? ""));
+      setToast({ message: "Image updated successfully", type: "success" });
+    } catch {
+      setToast({ message: "Network error — please try again", type: "error" });
+    } finally {
+      setUploading(false);
+    }
   };
 
-  const toggleRole = (role: string) => {
-    setForm((prev) => {
-      const current = prev.roles ?? [];
-      return {
-        ...prev,
-        roles: current.includes(role) ? current.filter((r) => r !== role) : [...current, role],
-      };
-    });
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Send to API
-    console.log("Save profile:", form);
+    setSaving(true);
+    try {
+      await apiFetch("/api/v1/users/me", {
+        method: "PUT",
+        body: JSON.stringify({
+          name: form.name || undefined,
+          bio: form.bio || undefined,
+          university: form.university || undefined,
+          birth_date: form.birth_date || undefined,
+          github: form.github || undefined,
+          linkedin: form.linkedin || undefined,
+          roles: form.roles,
+        }),
+      });
+      router.push("/profile");
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f4f6f8]">
+        <div className="w-8 h-8 border-4 border-[#1b3168] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl mx-auto">
-      {/* ── Header ── */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-navy-700">Edit Profile</h1>
-        <Link
-          href="/profile"
-          className="text-sm text-navy-500 hover:text-navy-700 transition-colors"
-        >
-          ← Back to Profile
-        </Link>
-      </div>
+    <>
+    <div className="w-full min-h-screen bg-[#f4f6f8] py-0 px-0 sm:py-8 sm:px-6">
+      <div className="flex flex-col w-full max-w-3xl mx-auto bg-white rounded-none sm:rounded-[2rem] border-0 sm:border border-gray-200 shadow-sm overflow-hidden pb-10">
 
-      {/* ── Cover Photo ── */}
-      <section className="space-y-2">
-        <label className="text-sm font-semibold text-navy-600">Cover Photo</label>
-        <div className="w-full h-40 rounded-2xl bg-gradient-to-r from-navy-100 to-sky-100 flex items-center justify-center border-2 border-dashed border-navy-200 cursor-pointer hover:border-navy-400 transition-colors">
-          <span className="text-sm text-navy-400">Click to upload cover photo</span>
-        </div>
-      </section>
+        {/* ── Hidden file inputs ── */}
+        <input ref={avatarInputRef} type="file" accept="image/*" className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f, "/api/v1/users/me/avatar", setAvatarUrl, setUploadingAvatar); e.target.value = ""; }} />
+        <input ref={coverInputRef} type="file" accept="image/*" className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadImage(f, "/api/v1/users/me/cover", setCoverUrl, setUploadingCover); e.target.value = ""; }} />
 
-      {/* ── Avatar ── */}
-      <section className="flex items-center gap-4">
-        <AvatarPlaceholder size="xl" />
-        <div>
-          <button
-            type="button"
-            className="px-4 py-2 rounded-lg border border-navy-200 text-sm text-navy-600 hover:bg-navy-50 transition-colors"
+        {/* ── Cover Photo ── */}
+        <div className="relative w-full">
+          <div
+            onClick={() => coverInputRef.current?.click()}
+            className="w-full aspect-[4/1] overflow-hidden relative bg-blue-100 rounded-none sm:rounded-t-[2rem] group cursor-pointer"
           >
-            Change Avatar
-          </button>
-          <p className="text-xs text-navy-400 mt-1">JPG, PNG. Max 2MB.</p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={coverUrl ?? "/cover-bg.png"}
+              alt="Cover"
+              className="w-full h-full object-cover object-center"
+            />
+            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+              {uploadingCover
+                ? <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                : <span className="text-white text-sm font-bold">เปลี่ยนรูปปก</span>
+              }
+            </div>
+          </div>
+
+          {/* ── Avatar ── */}
+          <div
+            onClick={() => avatarInputRef.current?.click()}
+            className="absolute -bottom-14 left-6 sm:left-10 group cursor-pointer"
+          >
+            <div className="w-28 h-28 rounded-full border-4 border-white overflow-hidden bg-white shadow-sm relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={avatarUrl ?? "/avatar.png"}
+                alt="Avatar"
+                className="w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity rounded-full flex items-center justify-center">
+                {uploadingAvatar
+                  ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  : <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                }
+              </div>
+            </div>
+          </div>
         </div>
-      </section>
 
-      {/* ── Display Name ── */}
-      <section className="space-y-1">
-        <label htmlFor="displayName" className="text-sm font-semibold text-navy-600">
-          Display Name
-        </label>
-        <input
-          id="displayName"
-          type="text"
-          value={form.displayName ?? ""}
-          onChange={(e) => handleChange("displayName", e.target.value)}
-          placeholder="Your display name"
-          className="w-full px-4 py-2.5 rounded-lg border border-navy-200 text-sm focus:outline-none focus:ring-2 focus:ring-navy-400 focus:border-transparent"
-        />
-      </section>
+        {/* ── Form ── */}
+        <form onSubmit={handleSubmit} className="px-6 sm:px-10 pt-20 space-y-6">
 
-      {/* ── Bio ── */}
-      <section className="space-y-1">
-        <label htmlFor="bio" className="text-sm font-semibold text-navy-600">
-          Bio
-        </label>
-        <textarea
-          id="bio"
-          rows={3}
-          value={form.bio ?? ""}
-          onChange={(e) => handleChange("bio", e.target.value)}
-          placeholder="Write something about yourself..."
-          className="w-full px-4 py-2.5 rounded-lg border border-navy-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-navy-400 focus:border-transparent"
-        />
-      </section>
+          {/* Back + Title */}
+          <div className="flex items-center gap-3">
+            <Link
+              href="/profile"
+              className="p-2 rounded-full border border-gray-200 text-[#1b3168] hover:bg-gray-50 transition-colors"
+              aria-label="ย้อนกลับ"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </Link>
+            <h1 className="text-2xl font-extrabold text-[#1b3168] tracking-tight">Edit Profile</h1>
+          </div>
 
-      {/* ── University ── */}
-      <section className="space-y-1">
-        <label htmlFor="university" className="text-sm font-semibold text-navy-600">
-          University
-        </label>
-        <input
-          id="university"
-          type="text"
-          value={form.university ?? ""}
-          onChange={(e) => handleChange("university", e.target.value)}
-          placeholder="e.g. King Mongkut's University of Technology Thonburi"
-          className="w-full px-4 py-2.5 rounded-lg border border-navy-200 text-sm focus:outline-none focus:ring-2 focus:ring-navy-400 focus:border-transparent"
-        />
-      </section>
+          <hr className="border-gray-100" />
 
-      {/* ── Birthday ── */}
-      <section className="space-y-1">
-        <label htmlFor="birthday" className="text-sm font-semibold text-navy-600">
-          Birthday
-        </label>
-        <input
-          id="birthday"
-          type="date"
-          value={form.birthday ?? ""}
-          onChange={(e) => handleChange("birthday", e.target.value)}
-          className="w-full px-4 py-2.5 rounded-lg border border-navy-200 text-sm focus:outline-none focus:ring-2 focus:ring-navy-400 focus:border-transparent"
-        />
-      </section>
+          {/* Display Name */}
+          <div className="space-y-1.5">
+            <label htmlFor="name" className="block text-sm font-bold text-[#1b3168]">
+              Display Name
+            </label>
+            <input
+              id="name"
+              type="text"
+              value={form.name}
+              onChange={set("name")}
+              placeholder="Your name"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-[#1b3168] text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1b3168]/30 focus:border-[#1b3168]"
+            />
+          </div>
 
-      {/* ── Contact: Email ── */}
-      <section className="space-y-1">
-        <label htmlFor="email" className="text-sm font-semibold text-navy-600">
-          Email
-        </label>
-        <input
-          id="email"
-          type="email"
-          value={form.email ?? ""}
-          onChange={(e) => handleChange("email", e.target.value)}
-          placeholder="you@example.com"
-          className="w-full px-4 py-2.5 rounded-lg border border-navy-200 text-sm focus:outline-none focus:ring-2 focus:ring-navy-400 focus:border-transparent"
-        />
-      </section>
+          {/* Bio */}
+          <div className="space-y-1.5">
+            <label htmlFor="bio" className="block text-sm font-bold text-[#1b3168]">
+              Bio
+            </label>
+            <textarea
+              id="bio"
+              rows={3}
+              value={form.bio}
+              onChange={set("bio")}
+              placeholder="Write something about yourself…"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-[#1b3168] text-sm placeholder:text-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-[#1b3168]/30 focus:border-[#1b3168]"
+            />
+          </div>
 
-      {/* ── Contact: GitHub ── */}
-      <section className="space-y-1">
-        <label htmlFor="github" className="text-sm font-semibold text-navy-600">
-          GitHub
-        </label>
-        <input
-          id="github"
-          type="url"
-          value={form.githubUrl ?? ""}
-          onChange={(e) => handleChange("githubUrl", e.target.value)}
-          placeholder="https://github.com/username"
-          className="w-full px-4 py-2.5 rounded-lg border border-navy-200 text-sm focus:outline-none focus:ring-2 focus:ring-navy-400 focus:border-transparent"
-        />
-      </section>
+          <hr className="border-gray-100" />
 
-      {/* ── Contact: LinkedIn ── */}
-      <section className="space-y-1">
-        <label htmlFor="linkedin" className="text-sm font-semibold text-navy-600">
-          LinkedIn
-        </label>
-        <input
-          id="linkedin"
-          type="url"
-          value={form.linkedinUrl ?? ""}
-          onChange={(e) => handleChange("linkedinUrl", e.target.value)}
-          placeholder="https://linkedin.com/in/username"
-          className="w-full px-4 py-2.5 rounded-lg border border-navy-200 text-sm focus:outline-none focus:ring-2 focus:ring-navy-400 focus:border-transparent"
-        />
-      </section>
+          {/* University + Birthday side by side */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label htmlFor="university" className="block text-sm font-bold text-[#1b3168]">
+                University
+              </label>
+              <input
+                id="university"
+                type="text"
+                value={form.university}
+                onChange={set("university")}
+                placeholder="e.g. Chulalongkorn University"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-[#1b3168] text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1b3168]/30 focus:border-[#1b3168]"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="birth_date" className="block text-sm font-bold text-[#1b3168]">
+                Birthday
+              </label>
+              <input
+                id="birth_date"
+                type="date"
+                value={form.birth_date}
+                onChange={set("birth_date")}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-[#1b3168] text-sm focus:outline-none focus:ring-2 focus:ring-[#1b3168]/30 focus:border-[#1b3168]"
+              />
+            </div>
+          </div>
 
-      {/* ── My Roles ── */}
-      <section className="space-y-2">
-        <label className="text-sm font-semibold text-navy-600">My Roles</label>
-        <div className="flex flex-wrap gap-2">
-          {availableRoles.map((role) => {
-            const selected = form.roles?.includes(role);
-            return (
-              <button
-                key={role}
-                type="button"
-                onClick={() => toggleRole(role)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                  selected
-                    ? "bg-navy-700 text-white border-navy-700"
-                    : "bg-white text-navy-600 border-navy-200 hover:border-navy-400"
-                }`}
-              >
-                {role}
-              </button>
-            );
-          })}
-        </div>
-      </section>
+          <hr className="border-gray-100" />
 
-      {/* ── Submit ── */}
-      <div className="flex items-center gap-3 pt-4">
-        <button
-          type="submit"
-          className="px-6 py-2.5 rounded-lg bg-navy-700 text-white text-sm font-semibold hover:bg-navy-600 transition-colors"
-        >
-          Save Changes
-        </button>
-        <Link
-          href="/profile"
-          className="px-6 py-2.5 rounded-lg border border-navy-200 text-sm text-navy-600 hover:bg-navy-50 transition-colors"
-        >
-          Cancel
-        </Link>
+          {/* Contact */}
+          <div className="space-y-4">
+            <h2 className="text-sm font-bold text-[#1b3168] uppercase tracking-widest">Contact</h2>
+
+            <div className="space-y-1.5">
+              <label htmlFor="github" className="block text-sm font-semibold text-gray-500">
+                GitHub
+              </label>
+              <div className="flex items-center gap-2 px-4 py-3 rounded-xl border border-gray-200 focus-within:ring-2 focus-within:ring-[#1b3168]/30 focus-within:border-[#1b3168]">
+                <svg className="w-4 h-4 text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.372.79 1.102.79 2.222v3.293c0 .319.23.57.75.576 4.765-1.589 8.195-6.086 8.195-11.386 0-6.627-5.373-12-12-12" />
+                </svg>
+                <input
+                  id="github"
+                  type="text"
+                  value={form.github}
+                  onChange={set("github")}
+                  placeholder="github.com/username"
+                  className="flex-1 text-sm text-[#1b3168] placeholder:text-gray-400 bg-transparent focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="linkedin" className="block text-sm font-semibold text-gray-500">
+                LinkedIn
+              </label>
+              <div className="flex items-center gap-2 px-4 py-3 rounded-xl border border-gray-200 focus-within:ring-2 focus-within:ring-[#1b3168]/30 focus-within:border-[#1b3168]">
+                <svg className="w-4 h-4 text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
+                </svg>
+                <input
+                  id="linkedin"
+                  type="text"
+                  value={form.linkedin}
+                  onChange={set("linkedin")}
+                  placeholder="linkedin.com/in/username"
+                  className="flex-1 text-sm text-[#1b3168] placeholder:text-gray-400 bg-transparent focus:outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          <hr className="border-gray-100" />
+
+          {/* Roles */}
+          <div className="space-y-3">
+            <h2 className="text-sm font-bold text-[#1b3168] uppercase tracking-widest">My Roles</h2>
+            <div className="flex flex-wrap gap-2">
+              {ROLE_OPTIONS.map((role) => {
+                const selected = form.roles.includes(role);
+                return (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => toggleRole(role)}
+                    className={`px-4 py-2 rounded-full text-sm font-bold border transition-all ${
+                      selected
+                        ? "bg-[#1b3168] text-white border-[#1b3168] shadow-sm"
+                        : "bg-white text-[#1b3168] border-gray-200 hover:border-[#1b3168]/50"
+                    }`}
+                  >
+                    {role}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex items-center gap-3 pt-2 pb-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="px-8 py-3 rounded-full bg-[#1b3168] text-white text-sm font-bold hover:bg-[#12224f] transition-colors shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {saving ? "กำลังบันทึก…" : "Save Changes"}
+            </button>
+            <Link
+              href="/profile"
+              className="px-8 py-3 rounded-full border border-gray-200 text-sm font-bold text-[#1b3168] hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </Link>
+          </div>
+
+        </form>
       </div>
-    </form>
+    </div>
+
+    {toast && (
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast(null)}
+      />
+    )}
+    </>
   );
 }

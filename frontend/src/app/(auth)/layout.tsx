@@ -8,7 +8,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
   return (
     <div
       className="light-theme min-h-screen flex flex-col items-center justify-center px-4 relative isolate"
-      style={{ background: 'linear-gradient(135deg, #ffffff 0%, #e8f4f8 50%, var(--color-border) 100%)', color: 'var(--color-text)' }}
+      style={{ background: 'var(--login-gradient)', color: 'var(--color-text)' }}
     >
       {/* Logo above the auth card */}
       <div className="mb-8">
@@ -19,7 +19,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <div className="w-full max-w-md">{children}</div>
 
       {/* Copyright */}
-      <p className="mt-8 text-xs" style={{ color: 'var(--color-muted)' }}>2025 GrandLine. All right reserved.</p>
+      <p className="mt-8 text-xs" style={{ color: '#fff' }}>2025 GrandLine. All right reserved.</p>
     </div>
   );
 }

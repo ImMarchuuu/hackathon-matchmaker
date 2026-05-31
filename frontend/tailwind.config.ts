@@ -1,6 +1,7 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
+  darkMode: 'class',
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
@@ -9,26 +10,23 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ["var(--font-sans)"],
-        mono: ["var(--font-mono)"],
+        sans: ["var(--font-noto-sans-thai)", "sans-serif"],
+        mono: ["var(--font-mono)", "monospace"],
       },
       colors: {
-        navy: {
-          50:  "#EEF1F8",
-          100: "#D4DAE9",
-          200: "#A9B5D3",
-          300: "#7E90BD",
-          400: "#536BA7",
-          500: "#2D4A8C",
-          600: "#243B70",
-          700: "#1B2A5B",
-          800: "#121C3D",
-          900: "#0A0F22",
-        },
+        'primary': 'rgb(var(--primary) / <alpha-value>)',
+        'secondary': 'rgb(var(--secondary) / <alpha-value>)',
+        'background': 'rgb(var(--background) / <alpha-value>)',
+        'status': 'rgb(var(--status) / <alpha-value>)',
+        'notice': 'rgb(var(--notice) / <alpha-value>)',
+        'card': 'rgb(var(--card) / <alpha-value>)',
       },
+      backgroundImage: {
+        'theme-gradient': 'var(--theme-gradient)',
+      }
     },
   },
-  plugins: [],
+  plugins: []
 };
 
 export default config;

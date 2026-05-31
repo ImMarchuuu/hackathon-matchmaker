@@ -1,0 +1,44 @@
+/* ── Onboarding animations ── */
+
+/* Slide up entrance */
+@keyframes ob-slide-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ob-slide-up { animation: ob-slide-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* Fade in */
+@keyframes ob-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.ob-fade-in { animation: ob-fade-in 0.5s ease both; }
+
+/* Pop-in checkmark */
+@keyframes ob-pop-in {
+  0% { transform: scale(0); opacity: 0; }
+  60% { transform: scale(1.12); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.ob-pop-in { animation: ob-pop-in 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both; }
+
+/* Gentle floating */
+@keyframes ob-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+.ob-float { animation: ob-float 3s ease-in-out infinite; }
+
+/* Pulse ring behind anchor icon */
+@keyframes ob-pulse-ring {
+  0% { transform: scale(1); opacity: 0.4; }
+  50% { transform: scale(1.15); opacity: 0.15; }
+  100% { transform: scale(1); opacity: 0.4; }
+}
+.ob-pulse-ring { animation: ob-pulse-ring 2.5s ease-in-out infinite; }
+
+/* Step dot active shrink/expand */
+@keyframes ob-dot-active {
+  0%, 100% { transform: scaleX(1); }
+  50% { transform: scaleX(1.1); }
+}

@@ -25,6 +25,7 @@ async def _init_mongo() -> None:
         settings.mongo_uri,
         serverSelectionTimeoutMS=5_000,
         connectTimeoutMS=5_000,
+        tz_aware=True,
     )
     await _mongo_client.admin.command("ping")
     _mongo_db = _mongo_client[settings.mongo_db]
