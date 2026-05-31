@@ -22,7 +22,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
       {/* Main content — full-width everywhere since Desktop has no Sidebar */}
-      <main className={`flex-grow w-full ${isProfilePage ? "bg-[#f5f7fa]" : ""}`}>
+      <main className={`flex-grow w-full ${isProfilePage ? "bg-[#f5f7fa] dark:bg-slate-900" : ""}`}>
         <div className={isProfilePage ? "w-full" : "max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8"}>
           {children}
         </div>
