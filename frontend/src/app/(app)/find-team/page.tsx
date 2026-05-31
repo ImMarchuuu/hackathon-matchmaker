@@ -5,6 +5,8 @@ import Link from "next/link";
 import TeamCard from "@/components/team/TeamCard";
 import PersonCard from "@/components/team/PersonCard";
 import { useTeamsData } from "@/hooks/useTeamsData";
+import { apiFetch } from "@/lib/api";
+import type { ApiTeam } from "@/types/team";
 
 type ActiveTab = "team" | "people";
 
@@ -16,7 +18,7 @@ export default function FindTeamPage() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
 
-  const { teams, people, isLoading } = useTeamsData();
+  const { teams, setTeams, people, isLoading } = useTeamsData();
 
   const toggleFilter = (role: string) => {
     setActiveFilters((prev) =>
@@ -24,7 +26,29 @@ export default function FindTeamPage() {
     );
   };
 
-  // Filter teams by search + role filters
+  async function handleRequest(teamId: string) {
+    try {
+      const updated = await apiFetch<ApiTeam>(`/api/v1/teams/${teamId}/requests`, { method: "POST" });
+      const myReq = updated.join_requests.findLast((r) => r.status === "pending");
+      setTeams((prev) => prev.map((t) =>
+        t.id === teamId ? { ...t, joinStatus: "pending", myRequestId: myReq?.id } : t
+      ));
+    } catch {
+      // e.g. already pending — ignore
+    }
+  }
+
+  async function handleCancel(teamId: string, reqId: string) {
+    try {
+      await apiFetch(`/api/v1/teams/${teamId}/requests/${reqId}`, { method: "DELETE" });
+      setTeams((prev) => prev.map((t) =>
+        t.id === teamId ? { ...t, joinStatus: "open", myRequestId: undefined } : t
+      ));
+    } catch {
+      // ignore
+    }
+  }
+
   const filteredTeams = teams.filter((t) => {
     const matchesSearch =
       !searchQuery ||
@@ -36,7 +60,6 @@ export default function FindTeamPage() {
     return matchesSearch && matchesFilter;
   });
 
-  // Filter people by search
   const filteredPeople = people.filter((p) => {
     const matchesSearch =
       !searchQuery ||
@@ -66,21 +89,14 @@ export default function FindTeamPage() {
 
         <button
           onClick={() => setIsFilterOpen(!isFilterOpen)}
-          className={`p-3 rounded-[1rem] border text-[#1b3168] hover:bg-gray-50 transition-colors shadow-sm shrink-0 ${activeFilters.length > 0
-              ? "bg-[#1b3168] text-white border-[#1b3168] hover:bg-[#12224f]"
-              : "bg-white border-gray-200"
-            }`}
-          aria-label="Toggle filter panel"
+          className={`p-3 rounded-[1rem] border text-[#1b3168] hover:bg-gray-50 transition-colors shadow-sm shrink-0 ${activeFilters.length > 0 ? "bg-[#1b3168] text-white border-[#1b3168] hover:bg-[#12224f]" : "bg-white border-gray-200"}`}
         >
           <svg className={`w-5 h-5 ${activeFilters.length > 0 ? "text-white" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
           </svg>
         </button>
 
-        <Link
-          href="/find-team/create"
-          className="flex items-center gap-2 px-6 py-3 rounded-[1rem] bg-[#1b3168] text-white text-sm font-bold hover:bg-[#12224f] transition-colors shadow-sm shrink-0 whitespace-nowrap"
-        >
+        <Link href="/find-team/create" className="flex items-center gap-2 px-6 py-3 rounded-[1rem] bg-[#1b3168] text-white text-sm font-bold hover:bg-[#12224f] transition-colors shadow-sm shrink-0 whitespace-nowrap">
           create +
         </Link>
       </div>
@@ -91,21 +107,13 @@ export default function FindTeamPage() {
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-sm font-bold text-[#1b3168]">Filter by Role</h3>
             {activeFilters.length > 0 && (
-              <button onClick={() => setActiveFilters([])} className="text-xs text-gray-400 hover:text-gray-600 font-semibold">
-                Clear all
-              </button>
+              <button onClick={() => setActiveFilters([])} className="text-xs text-gray-400 hover:text-gray-600 font-semibold">Clear all</button>
             )}
           </div>
           <div className="flex flex-wrap gap-2">
             {ALL_ROLES.map((tag) => (
-              <button
-                key={tag}
-                onClick={() => toggleFilter(tag)}
-                className={`px-4 py-2 rounded-full border text-sm font-semibold transition-colors ${activeFilters.includes(tag)
-                    ? "bg-[#1b3168] text-white border-[#1b3168]"
-                    : "border-gray-200 text-gray-600 hover:bg-[#1b3168] hover:text-white hover:border-[#1b3168]"
-                  }`}
-              >
+              <button key={tag} onClick={() => toggleFilter(tag)}
+                className={`px-4 py-2 rounded-full border text-sm font-semibold transition-colors ${activeFilters.includes(tag) ? "bg-[#1b3168] text-white border-[#1b3168]" : "border-gray-200 text-gray-600 hover:bg-[#1b3168] hover:text-white hover:border-[#1b3168]"}`}>
                 {tag}
               </button>
             ))}
@@ -116,27 +124,18 @@ export default function FindTeamPage() {
       {/* ── Tabs ── */}
       <div className="flex justify-center w-full">
         <div className="flex bg-[#EAEAEA] rounded-xl p-1 shrink-0 w-full max-w-[280px]">
-          <button
-            onClick={() => setActiveTab("team")}
-            className={`flex-1 py-2.5 rounded-lg text-xs font-black tracking-widest transition-all ${activeTab === "team" ? "bg-[#1b3168] text-white shadow-sm" : "text-gray-500 hover:text-gray-700"
-              }`}
-          >
-            TEAM
-          </button>
-          <button
-            onClick={() => setActiveTab("people")}
-            className={`flex-1 py-2.5 rounded-lg text-xs font-black tracking-widest transition-all ${activeTab === "people" ? "bg-[#1b3168] text-white shadow-sm" : "text-gray-500 hover:text-gray-700"
-              }`}
-          >
-            PEOPLE
-          </button>
+          {(["team", "people"] as const).map((tab) => (
+            <button key={tab} onClick={() => setActiveTab(tab)}
+              className={`flex-1 py-2.5 rounded-lg text-xs font-black tracking-widest transition-all ${activeTab === tab ? "bg-[#1b3168] text-white shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+              {tab.toUpperCase()}
+            </button>
+          ))}
         </div>
       </div>
 
       {/* ── Card Grid ── */}
-      <section aria-label={activeTab === "team" ? "Team listings" : "People listings"}>
+      <section>
         {isLoading ? (
-          /* Loading skeleton */
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6 h-48 animate-pulse">
@@ -154,21 +153,28 @@ export default function FindTeamPage() {
           filteredTeams.length > 0 ? (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full items-start">
               {filteredTeams.map((team) => (
-                <TeamCard key={team.id} data={{
-                  id: team.id,
-                  avatarUrl: team.avatarUrl,
-                  title: team.title,
-                  authorName: team.authorName,
-                  dateRange: team.dateRange,
-                  daysLeft: team.daysLeft,
-                  roles: team.roles,
-                  skills: team.skills,
-                  currentMembers: team.currentMemberCount,
-                  maxMembers: team.maxMembers,
-                  memberAvatars: team.memberAvatars,
-                  description: team.description,
-                  detailedMembers: team.detailedMembers,
-                }} />
+                <TeamCard
+                  key={team.id}
+                  data={{
+                    id: team.id,
+                    avatarUrl: team.avatarUrl,
+                    title: team.title,
+                    authorName: team.authorName,
+                    dateRange: team.dateRange,
+                    daysLeft: team.daysLeft,
+                    roles: team.roles,
+                    skills: team.skills,
+                    currentMembers: team.currentMemberCount,
+                    maxMembers: team.maxMembers,
+                    memberAvatars: team.memberAvatars,
+                    description: team.description,
+                    detailedMembers: team.detailedMembers,
+                    joinStatus: team.joinStatus,
+                    myRequestId: team.myRequestId,
+                  }}
+                  onRequest={() => handleRequest(team.id)}
+                  onCancel={() => team.myRequestId && handleCancel(team.id, team.myRequestId)}
+                />
               ))}
             </div>
           ) : (

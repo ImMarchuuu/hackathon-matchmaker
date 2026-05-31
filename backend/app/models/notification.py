@@ -5,7 +5,12 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.base import PyObjectId
 
-NotificationType = Literal["invite", "review", "follow", "favorite"]
+
+NotificationType = Literal[
+    "join_request",
+    "request_approved",
+    "request_rejected",
+]
 
 
 class NotificationDocument(BaseModel):
@@ -23,7 +28,6 @@ class NotificationResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
     id: str = Field(alias="_id")
-    user_id: str
     type: NotificationType
     payload: dict[str, Any]
     read: bool
@@ -31,9 +35,4 @@ class NotificationResponse(BaseModel):
 
     @classmethod
     def from_document(cls, doc: dict) -> "NotificationResponse":
-        doc = {
-            **doc,
-            "_id": str(doc["_id"]),
-            "user_id": str(doc["user_id"]),
-        }
-        return cls.model_validate(doc)
+        return cls.model_validate({**doc, "_id": str(doc["_id"])})

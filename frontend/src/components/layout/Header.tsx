@@ -30,14 +30,14 @@ function ProfilePopup({ onClose, user }: { onClose: () => void; user: ApiUser | 
           onClick={onClose} 
           className="w-full bg-[#1b3168] text-white font-bold tracking-wide py-3.5 rounded-full text-center hover:bg-[#12224f] transition-colors text-sm shadow-sm"
         >
-          ดูโปรไฟล์
+          My Profile
         </Link>
         <Link 
           href="/settings" 
           onClick={onClose} 
           className="w-full bg-white text-[#1b3168] border border-gray-200 font-bold tracking-wide py-3.5 rounded-full text-center hover:bg-gray-50 transition-colors text-sm shadow-sm"
         >
-          การตั้งค่า
+          Setting
         </Link>
         <button
           onClick={async () => {
@@ -52,7 +52,7 @@ function ProfilePopup({ onClose, user }: { onClose: () => void; user: ApiUser | 
           }}
           className="w-full bg-white text-[#ff4d4f] border border-[#ff4d4f]/30 font-bold tracking-wide py-3.5 rounded-full text-center hover:bg-red-50 transition-colors text-sm shadow-sm mt-1"
         >
-          ออกจากระบบ
+          Logout
         </button>
       </div>
     </div>
@@ -60,121 +60,90 @@ function ProfilePopup({ onClose, user }: { onClose: () => void; user: ApiUser | 
 }
 
 function NotificationPopup({ onClose }: { onClose: () => void }) {
-  const mockNotifications = [
-    {
-      id: "1",
-      type: "request",
-      requesterId: "u2",
-      requesterName: "Chanut Sunatho",
-      avatarUrl: "https://i.pravatar.cc/150?u=1",
-      teamName: "Pirate Hackathon",
-      time: "10 นาทีที่แล้ว"
-    },
-    {
-      id: "2",
-      type: "accepted",
-      teamName: "Superman Engineer",
-      time: "2 ชั่วโมงที่แล้ว"
-    },
-    {
-      id: "3",
-      type: "complete",
-      teamName: "Pirate Hackathon",
-      time: "5 ชั่วโมงที่แล้ว"
-    },
-    {
-      id: "4",
-      type: "complete_joined",
-      teamName: "AI Startup",
-      time: "1 วันที่แล้ว"
-    },
-    {
-      id: "5",
-      type: "start",
-      teamName: "AI",
-      time: "2 วันที่แล้ว"
-    }
-  ];
+  const [notifications, setNotifications] = React.useState<import("@/types/notification").ApiNotification[]>([]);
+  const [loading, setLoading] = React.useState(true);
+
+  React.useEffect(() => {
+    apiFetch<import("@/types/notification").ApiNotification[]>("/api/v1/notifications")
+      .then(setNotifications)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function markAllRead() {
+    await apiFetch("/api/v1/notifications/read-all", { method: "PATCH" }).catch(() => {});
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  }
+
+  function fmtTime(iso: string) {
+    const diff = Date.now() - new Date(iso).getTime();
+    const m = Math.floor(diff / 60000);
+    if (m < 60) return `${m || 1} นาทีที่แล้ว`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h} ชั่วโมงที่แล้ว`;
+    return `${Math.floor(h / 24)} วันที่แล้ว`;
+  }
 
   return (
     <div className="absolute top-[140%] right-[-60px] sm:right-0 mt-1 w-[340px] sm:w-[400px] bg-white rounded-[2rem] shadow-xl border border-gray-100 p-5 z-50 flex flex-col gap-4 cursor-default origin-top-right animate-in fade-in zoom-in-95 duration-200">
       <div className="flex justify-between items-center px-2">
         <h3 className="text-[#1b3168] font-black text-lg">การแจ้งเตือน</h3>
-        <button className="text-blue-600 font-bold text-sm hover:text-blue-800 transition-colors">อ่านทั้งหมด</button>
+        <button onClick={markAllRead} className="text-blue-600 font-bold text-sm hover:text-blue-800 transition-colors">อ่านทั้งหมด</button>
       </div>
 
       <div className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto pr-1">
-        {mockNotifications.map(notif => {
-          if (notif.type === "request") {
+        {loading && (
+          <div className="flex justify-center py-6">
+            <div className="w-6 h-6 border-2 border-[#1b3168] border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+
+        {!loading && notifications.length === 0 && (
+          <p className="text-gray-400 text-sm text-center py-8">ยังไม่มีการแจ้งเตือน</p>
+        )}
+
+        {notifications.map((notif) => {
+          const p = notif.payload;
+          const unread = !notif.read;
+
+          if (notif.type === "join_request") {
             return (
-              <div key={notif.id} className="flex flex-col gap-3 p-4 rounded-2xl bg-[#f8faff] border border-blue-100 hover:border-blue-200 transition-colors">
-                <Link href={`/profile/${notif.requesterId}`} onClick={onClose} className="flex gap-3 items-start">
-                  <div className="w-10 h-10 rounded-full border border-blue-100 overflow-hidden shrink-0 bg-white">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={notif.avatarUrl} alt={notif.requesterName} className="w-full h-full object-cover" />
-                  </div>
+              <div key={notif.id} className={`flex flex-col gap-3 p-4 rounded-2xl border transition-colors ${unread ? "bg-[#f8faff] border-blue-100" : "bg-white border-gray-100"}`}>
+                <Link href={p.team_id ? `/teams/${p.team_id}` : "#"} onClick={onClose} className="flex gap-3 items-start">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={p.requester_avatar ?? "/avatar.png"} alt="" className="w-10 h-10 rounded-full object-cover border border-blue-100 shrink-0" />
                   <div className="flex flex-col">
                     <p className="text-sm text-gray-700 leading-relaxed">
-                      <span className="font-bold text-[#1b3168] hover:underline">{notif.requesterName}</span> ขอเข้าร่วมทีม <span className="font-bold text-[#1b3168]">{notif.teamName}</span> ของคุณ
+                      <span className="font-bold text-[#1b3168]">{p.requester_name}</span> ขอเข้าร่วมทีม <span className="font-bold text-[#1b3168]">{p.team_name}</span>
                     </p>
-                    <p className="text-[10px] text-gray-400 font-medium mt-0.5">{notif.time}</p>
+                    <p className="text-[10px] text-gray-400 font-medium mt-0.5">{fmtTime(notif.created_at)}</p>
                   </div>
                 </Link>
-                <div className="flex gap-2 ml-13">
-                  <button className="flex-1 bg-[#233876] text-white py-2 rounded-xl text-xs font-bold tracking-wide hover:bg-[#1a2a5c] transition-colors shadow-sm">ตอบรับ</button>
-                  <button className="flex-1 bg-white border border-gray-200 text-gray-700 py-2 rounded-xl text-xs font-bold tracking-wide hover:bg-gray-50 transition-colors shadow-sm">ปฏิเสธ</button>
-                </div>
               </div>
-            )
-          }
-
-          let icon = null;
-          let content = null;
-
-          if (notif.type === "accepted") {
-            icon = (
-              <div className="w-10 h-10 rounded-full bg-green-100 text-green-500 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
-              </div>
-            );
-            content = (
-              <p className="text-sm text-gray-700 leading-relaxed">
-                คำขอเข้าร่วมทีม <span className="font-bold text-[#1b3168]">{notif.teamName}</span> ของคุณถูก <span className="font-bold text-green-500">ยอมรับแล้ว</span>
-              </p>
-            );
-          } else if (notif.type === "complete" || notif.type === "complete_joined") {
-            icon = (
-              <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-500 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
-              </div>
-            );
-            content = (
-              <p className="text-sm text-gray-700 leading-relaxed">
-                ทีม <span className="font-bold text-[#1b3168]">{notif.teamName}</span> {notif.type === "complete" ? "ที่คุณสร้างสมาชิกครบแล้ว! ชวนเพื่อนๆ ไปดูโปรไฟล์กันเลย" : "ที่คุณเข้าร่วมสมาชิกครบแล้ว! ไปทักทายเพื่อนๆ กันเถอะ"}
-              </p>
-            );
-          } else if (notif.type === "start") {
-            icon = (
-              <div className="w-10 h-10 rounded-full bg-orange-100 text-orange-500 flex items-center justify-center shrink-0">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              </div>
-            );
-            content = (
-              <p className="text-sm text-gray-700 leading-relaxed">
-                เตรียมตัวให้พร้อม! การแข่งขันของทีม <span className="font-bold text-[#1b3168]">{notif.teamName}</span>
-              </p>
             );
           }
 
+          const isApproved = notif.type === "request_approved";
           return (
-            <div key={notif.id} className="flex gap-4 p-4 rounded-2xl hover:bg-gray-50 transition-colors cursor-pointer border border-transparent hover:border-gray-100">
-              {icon}
+            <div key={notif.id} className={`flex gap-4 p-4 rounded-2xl border transition-colors ${unread ? "bg-[#f8faff] border-blue-100" : "bg-white border-gray-100"}`}>
+              <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isApproved ? "bg-green-100 text-green-500" : "bg-red-100 text-red-400"}`}>
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                  {isApproved
+                    ? <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    : <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />}
+                </svg>
+              </div>
               <div className="flex flex-col gap-1">
-                {content}
-                <p className="text-[10px] text-gray-400 font-medium">{notif.time}</p>
+                <p className="text-sm text-gray-700 leading-relaxed">
+                  คำขอเข้าร่วมทีม <span className="font-bold text-[#1b3168]">{p.team_name}</span>{" "}
+                  {isApproved
+                    ? <span className="font-bold text-green-500">ได้รับการยอมรับแล้ว ✓</span>
+                    : <span className="font-bold text-red-400">ถูกปฏิเสธ</span>}
+                </p>
+                <p className="text-[10px] text-gray-400 font-medium">{fmtTime(notif.created_at)}</p>
               </div>
             </div>
-          )
+          );
         })}
       </div>
     </div>

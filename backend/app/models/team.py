@@ -1,5 +1,6 @@
+import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Literal, Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -10,6 +11,20 @@ TeamStatus = Literal["WAITING", "IN_PROGRESS"]
 
 
 # ─── Sub-documents ────────────────────────────────────────────────────────────
+
+JoinRequestStatus = Literal["pending", "approved", "rejected"]
+
+
+class JoinRequest(BaseModel):
+    id: str = Field(default_factory=lambda: uuid.uuid4().hex)
+    user_id: str
+    status: JoinRequestStatus = "pending"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class JoinRequestAction(BaseModel):
+    status: Literal["approved", "rejected"]
+
 
 class Position(BaseModel):
     role: RoleName
@@ -74,6 +89,7 @@ class TeamResponse(BaseModel):
     max_members: int
     description: Optional[str] = None
     created_at: datetime
+    join_requests: list[JoinRequest] = []
 
     @classmethod
     def from_document(cls, doc: dict) -> "TeamResponse":
@@ -82,6 +98,10 @@ class TeamResponse(BaseModel):
             "_id": str(doc["_id"]),
             "leader_id": str(doc["leader_id"]),
             "member_ids": [str(m) for m in doc.get("member_ids", [])],
+            "join_requests": [
+                {**r, "user_id": str(r["user_id"])}
+                for r in doc.get("join_requests", [])
+            ],
         }
         return cls.model_validate(doc)
 

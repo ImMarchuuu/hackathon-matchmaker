@@ -24,11 +24,14 @@ export interface TeamCardData {
   memberAvatars: string[];
   description?: string;
   detailedMembers?: DetailedMember[];
+  joinStatus?: "leader" | "member" | "pending" | "rejected" | "open";
+  myRequestId?: string;
 }
 
 interface TeamCardProps {
   data: TeamCardData;
   onRequest?: () => void;
+  onCancel?: () => void;
 }
 
 const abbreviateRole = (role: string) => {
@@ -116,7 +119,7 @@ function DynamicTagList({ tags, textColorClass }: { tags: string[], textColorCla
   );
 }
 
-export default function TeamCard({ data, onRequest }: TeamCardProps) {
+export default function TeamCard({ data, onRequest, onCancel }: TeamCardProps) {
   const isUrgent = data.daysLeft <= 1;
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -270,12 +273,32 @@ export default function TeamCard({ data, onRequest }: TeamCardProps) {
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          <button 
-            onClick={onRequest}
-            className="bg-[#1b3168] text-white text-xs font-bold tracking-widest px-6 py-2 rounded-full hover:bg-[#12224f] transition-colors"
-          >
-            REQUEST
-          </button>
+          {(!data.joinStatus || data.joinStatus === "open" || data.joinStatus === "rejected") && (
+            <button
+              onClick={onRequest}
+              className="bg-[#1b3168] text-white text-xs font-bold tracking-widest px-6 py-2 rounded-full hover:bg-[#12224f] transition-colors"
+            >
+              REQUEST
+            </button>
+          )}
+          {data.joinStatus === "pending" && (
+            <button
+              onClick={onCancel}
+              className="bg-orange-50 text-orange-500 border border-orange-300 text-xs font-bold px-6 py-2 rounded-full hover:bg-orange-100 transition-colors"
+            >
+              PENDING ✕
+            </button>
+          )}
+          {data.joinStatus === "member" && (
+            <span className="bg-green-50 text-green-600 border border-green-200 text-xs font-bold px-6 py-2 rounded-full">
+              JOINED ✓
+            </span>
+          )}
+          {data.joinStatus === "leader" && (
+            <span className="bg-[#eef1fa] text-[#1b3168] text-xs font-bold px-6 py-2 rounded-full">
+              YOUR TEAM
+            </span>
+          )}
         </div>
       </div>
     </article>
