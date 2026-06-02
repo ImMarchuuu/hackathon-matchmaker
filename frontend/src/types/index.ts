@@ -66,6 +66,7 @@ export interface TeamCardViewModel {
   authorName: string;  // leader's name
   dateRange: string;
   daysLeft: number;
+  status: "WAITING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
   roles: string[];
   skills: string[];
   currentMemberCount: number;

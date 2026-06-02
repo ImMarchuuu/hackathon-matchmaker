@@ -8,7 +8,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.core.db import db_dependency, redis_dependency
 from app.core.deps import get_current_user_id
 from app.models.team import TeamResponse
-from app.models.user import AddCompetitionRequest, FavoriteToggleResponse, RankSummaryResponse, RoleName, UpdateProfileRequest, UserPublicResponse
+from app.models.user import AddCompetitionRequest, CompetitionExperienceResponse, FavoriteToggleResponse, RankSummaryResponse, RoleName, UpdateProfileRequest, UserPublicResponse
 from app.services import team as team_service
 from app.services import user as user_service
 from app.services.rank import get_rank_summary
@@ -86,38 +86,56 @@ async def recompute_ranks(
     return doc
 
 
-@router.post("/me/competitions", response_model=UserPublicResponse, status_code=201, summary="Add a competition experience")
+@router.get("/me/competitions", response_model=list[CompetitionExperienceResponse], summary="Get current user's competition history")
+async def get_my_competitions(
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+) -> list[CompetitionExperienceResponse]:
+    """Return all competition/project entries with reviewed status computed from behavioral_votes."""
+    return await user_service.get_competitions(db, current_user_id)
+
+
+@router.post("/me/competitions", response_model=list[CompetitionExperienceResponse], status_code=201, summary="Add a competition experience")
 async def add_competition(
     payload: AddCompetitionRequest,
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncIOMotorDatabase = Depends(db_dependency),
     redis: aioredis.Redis = Depends(redis_dependency),
-) -> UserPublicResponse:
-    """Append a competition experience and recompute role/skill ranks."""
+) -> list[CompetitionExperienceResponse]:
+    """Append a competition experience, recompute ranks, return updated list."""
     return await user_service.add_competition(db, redis, current_user_id, payload)
 
 
-@router.put("/me/competitions/{comp_id}", response_model=UserPublicResponse, summary="Update a competition experience")
+@router.put("/me/competitions/{comp_id}", response_model=list[CompetitionExperienceResponse], summary="Update a competition experience")
 async def update_competition(
     comp_id: str,
     payload: AddCompetitionRequest,
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncIOMotorDatabase = Depends(db_dependency),
     redis: aioredis.Redis = Depends(redis_dependency),
-) -> UserPublicResponse:
-    """Replace a competition experience entry and recompute role/skill ranks."""
+) -> list[CompetitionExperienceResponse]:
+    """Replace a competition experience entry, recompute ranks, return updated list."""
     return await user_service.update_competition(db, redis, current_user_id, comp_id, payload)
 
 
-@router.delete("/me/competitions/{comp_id}", response_model=UserPublicResponse, summary="Remove a competition experience")
+@router.delete("/me/competitions/{comp_id}", response_model=list[CompetitionExperienceResponse], summary="Remove a competition experience")
 async def remove_competition(
     comp_id: str,
     current_user_id: str = Depends(get_current_user_id),
     db: AsyncIOMotorDatabase = Depends(db_dependency),
     redis: aioredis.Redis = Depends(redis_dependency),
-) -> UserPublicResponse:
-    """Remove a competition experience entry and recompute role/skill ranks."""
+) -> list[CompetitionExperienceResponse]:
+    """Remove a competition experience entry, recompute ranks, return updated list."""
     return await user_service.remove_competition(db, redis, current_user_id, comp_id)
+
+
+@router.get("/{user_id}/competitions", response_model=list[CompetitionExperienceResponse], summary="Get a user's competition history")
+async def get_user_competitions(
+    user_id: str,
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+) -> list[CompetitionExperienceResponse]:
+    """Return competition/project entries for a given user (public)."""
+    return await user_service.get_competitions(db, user_id)
 
 
 @router.get("/me/favorites", response_model=list[UserPublicResponse], summary="Get current user's favorite people")

@@ -11,6 +11,8 @@ RoleName = Literal["Developer", "Business", "UI/UX Designer", "Marketing", "AI /
 RankTitle = Literal["Bronze", "Silver", "Gold", "Diamond"]
 OAuthProvider = Literal["google", "facebook", "github"]
 
+CompetitionType = Literal["project", "team"]
+
 
 # ─── Sub-documents ────────────────────────────────────────────────────────────
 
@@ -41,7 +43,11 @@ class CompetitionExperience(BaseModel):
     detail: str = Field(default="", max_length=600)
     roles: list[RoleName] = Field(min_length=1)
     skills: list[str] = []
-    contributor_ids: list[str] = []   # list of user _id strings
+    contributor_ids: list[str] = []
+    type: CompetitionType = "team"
+    team_id: Optional[str] = None
+    date: Optional[str] = None        # YYYY-MM-DD display date
+    github_url: Optional[str] = None
 
 
 class OAuthAccount(BaseModel):
@@ -75,6 +81,7 @@ class UserDocument(BaseModel):
     skills: list[SkillEntry] = []
     portfolios: list[PortfolioEntry] = []
     competition_experiences: list[CompetitionExperience] = []
+    display_roles: list[str] = []
     oauth_accounts: list[OAuthAccount] = []
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
@@ -96,6 +103,7 @@ class UpdateProfileRequest(BaseModel):
     github: Optional[str] = None
     linkedin: Optional[str] = None
     roles: Optional[list[RoleName]] = None
+    display_roles: Optional[list[str]] = None
 
 
 class UpdateSkillsRequest(BaseModel):
@@ -115,6 +123,9 @@ class AddCompetitionRequest(BaseModel):
     roles: list[RoleName] = Field(min_length=1)
     skills: list[str] = []
     contributor_ids: list[str] = []
+    type: CompetitionType = "project"
+    date: Optional[str] = None
+    github_url: Optional[str] = None
 
 
 # ─── API response models ──────────────────────────────────────────────────────
@@ -146,6 +157,21 @@ class RankSummaryResponse(BaseModel):
     behavioral_rates: float
 
 
+class CompetitionExperienceResponse(BaseModel):
+    """Competition entry with runtime-computed reviewed flag."""
+    id: str
+    competition_name: str
+    detail: str
+    roles: list[str]
+    skills: list[str]
+    contributor_ids: list[str]
+    type: str
+    team_id: Optional[str]
+    date: Optional[str]
+    github_url: Optional[str]
+    reviewed: bool
+
+
 class FavoriteToggleResponse(BaseModel):
     target_id: str
     favorited: bool
@@ -172,7 +198,7 @@ class UserPublicResponse(BaseModel):
     role: list[RoleEntry]
     skills: list[SkillEntry]
     portfolios: list[PortfolioEntry]
-    competition_experiences: list[CompetitionExperience] = []
+    display_roles: list[str] = []
 
     @classmethod
     def from_document(cls, doc: dict) -> "UserPublicResponse":

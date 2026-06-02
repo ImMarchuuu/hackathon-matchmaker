@@ -172,6 +172,7 @@ export default function FindTeamContent({ teams, people, isLoading }: FindTeamCo
                     authorName: team.authorName,
                     dateRange: team.dateRange,
                     daysLeft: team.daysLeft,
+                    status: team.status,
                     roles: team.roles,
                     skills: team.skills,
                     currentMembers: team.currentMemberCount,
@@ -179,6 +180,8 @@ export default function FindTeamContent({ teams, people, isLoading }: FindTeamCo
                     memberAvatars: team.memberAvatars,
                     description: team.description,
                     detailedMembers: team.detailedMembers,
+                    joinStatus: team.joinStatus,
+                    myRequestId: team.myRequestId,
                   }} />
                 </div>
               ))}

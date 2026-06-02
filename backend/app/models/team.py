@@ -13,6 +13,14 @@ TeamStatus = Literal["WAITING", "IN_PROGRESS", "COMPLETED", "CANCELLED"]
 # ─── Sub-documents ────────────────────────────────────────────────────────────
 
 JoinRequestStatus = Literal["pending", "approved", "rejected"]
+InviteStatus = Literal["pending", "accepted", "declined"]
+
+
+class Invite(BaseModel):
+    id: str = Field(default_factory=lambda: uuid.uuid4().hex)
+    user_id: str
+    status: InviteStatus = "pending"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 class JoinRequest(BaseModel):
@@ -57,6 +65,8 @@ class TeamDocument(BaseModel):
     member_ids: list[PyObjectId] = []
     max_members: int = Field(ge=2, le=10)
     description: Optional[str] = None
+    leader_roles: list[str] = []
+    leader_skills: list[str] = []
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
@@ -65,11 +75,13 @@ class TeamDocument(BaseModel):
 class TeamCreateRequest(BaseModel):
     title: str = Field(min_length=3, max_length=100)
     start_date: str
-    end_date: str
+    end_date: Optional[str] = None
     required_roles: list[RoleName] = []
     required_skills: list[str] = []
     max_members: int = Field(ge=2, le=10)
     description: Optional[str] = None
+    leader_roles: list[str] = []
+    leader_skills: list[str] = []
 
 
 class InviteMemberRequest(BaseModel):
@@ -95,6 +107,11 @@ class AddMemberRequest(BaseModel):
     user_id: str
 
 
+class AcceptInviteRequest(BaseModel):
+    roles: list[str] = []
+    skills: list[str] = []
+
+
 # ─── API response models ──────────────────────────────────────────────────────
 
 class TeamResponse(BaseModel):
@@ -115,6 +132,7 @@ class TeamResponse(BaseModel):
     description: Optional[str] = None
     created_at: datetime
     join_requests: list[JoinRequest] = []
+    invites: list[Invite] = []
 
     @classmethod
     def from_document(cls, doc: dict) -> "TeamResponse":
@@ -126,6 +144,10 @@ class TeamResponse(BaseModel):
             "join_requests": [
                 {**r, "user_id": str(r["user_id"])}
                 for r in doc.get("join_requests", [])
+            ],
+            "invites": [
+                {**i, "user_id": str(i["user_id"])}
+                for i in doc.get("invites", [])
             ],
         }
         return cls.model_validate(doc)

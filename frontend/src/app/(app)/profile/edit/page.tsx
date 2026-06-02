@@ -24,6 +24,7 @@ interface EditForm {
   github: string;
   linkedin: string;
   roles: string[];
+  display_roles: string[];
 }
 
 export default function EditProfilePage() {
@@ -60,6 +61,7 @@ export default function EditProfilePage() {
           github: user.github ?? "",
           linkedin: user.linkedin ?? "",
           roles: user.role.map((r) => r.name),
+          display_roles: user.display_roles ?? [],
         });
       })
       .catch(() => router.replace("/login"))
@@ -119,6 +121,7 @@ export default function EditProfilePage() {
           github: form.github || undefined,
           linkedin: form.linkedin || undefined,
           roles: form.roles,
+          display_roles: form.display_roles,
         }),
       });
       router.push("/profile");
@@ -341,6 +344,51 @@ export default function EditProfilePage() {
               })}
             </div>
           </div>
+
+          {/* Display roles — pick up to 2 from selected roles */}
+          {form.roles.length > 0 && (
+            <div className="space-y-3">
+              <div>
+                <h2 className="text-sm font-bold text-[#1b3168] uppercase tracking-widest">
+                  Roles ที่แสดงบน Profile
+                </h2>
+                <p className="text-xs text-gray-400 mt-0.5">เลือกได้สูงสุด 2 อัน — แสดงใต้ชื่อของคุณ</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {form.roles.map((role) => {
+                  const selected = form.display_roles.includes(role);
+                  const maxReached = form.display_roles.length >= 2 && !selected;
+                  return (
+                    <button
+                      key={role}
+                      type="button"
+                      disabled={maxReached}
+                      onClick={() =>
+                        setForm((p) => ({
+                          ...p,
+                          display_roles: selected
+                            ? p.display_roles.filter((r) => r !== role)
+                            : [...p.display_roles, role],
+                        }))
+                      }
+                      className={`px-4 py-2 rounded-full text-sm font-bold border transition-all ${
+                        selected
+                          ? "bg-[#1b3168] text-white border-[#1b3168] shadow-sm"
+                          : maxReached
+                          ? "bg-gray-50 text-gray-300 border-gray-200 cursor-not-allowed"
+                          : "bg-white text-[#1b3168] border-gray-200 hover:border-[#1b3168]/50"
+                      }`}
+                    >
+                      {role}
+                    </button>
+                  );
+                })}
+              </div>
+              {form.display_roles.length === 2 && (
+                <p className="text-xs text-gray-400">ครบ 2 อันแล้ว — ยกเลิกอันที่เลือกเพื่อเปลี่ยน</p>
+              )}
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex items-center gap-3 pt-2 pb-2">

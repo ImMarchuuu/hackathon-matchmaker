@@ -25,7 +25,7 @@ export default function ActiveTeamSection({ teams = [] }: ActiveTeamSectionProps
 
       {/* ── Card Grid ── */}
       {teams.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+        <div className="grid grid-cols-1 gap-4 w-full">
           {teams.map((team) => (
             <CompactActiveCard key={team.id} {...team} />
           ))}

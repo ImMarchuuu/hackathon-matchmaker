@@ -5,7 +5,9 @@ export type NotificationType =
   | "team_invite"
   | "team_kicked"
   | "team_cancelled"
-  | "team_completed";
+  | "team_completed"
+  | "invite_accepted"
+  | "invite_declined";
 
 export interface ApiNotification {
   id: string;
@@ -21,8 +23,16 @@ export interface ApiNotification {
     roles?: string[];
     skills?: string[];
     resolved_status?: "approved" | "rejected";
+    // team_invite
+    invite_id?: string;
+    invite_resolved?: "accepted" | "declined" | "error";
+    required_roles?: string[];
+    required_skills?: string[];
     // team_completed
     teammate_ids?: string[];
+    // invite_accepted / invite_declined
+    user_name?: string;
+    user_avatar?: string | null;
   };
   read: boolean;
   created_at: string;

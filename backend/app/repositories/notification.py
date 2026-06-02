@@ -41,6 +41,23 @@ async def delete_all_for_user(db: AsyncIOMotorDatabase, user_id: ObjectId) -> No
     await db["notifications"].delete_many({"user_id": user_id})
 
 
+async def stamp_invite_resolved(
+    db: AsyncIOMotorDatabase,
+    user_id: ObjectId,
+    team_id: str,
+    resolved_status: str,
+) -> None:
+    """Set payload.invite_resolved on the user's team_invite notification."""
+    await db["notifications"].update_one(
+        {
+            "user_id": user_id,
+            "type": "team_invite",
+            "payload.team_id": team_id,
+        },
+        {"$set": {"payload.invite_resolved": resolved_status}},
+    )
+
+
 async def stamp_request_resolved(
     db: AsyncIOMotorDatabase,
     leader_id: ObjectId,

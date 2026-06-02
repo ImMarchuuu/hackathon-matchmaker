@@ -18,6 +18,7 @@ export interface TeamCardData {
   authorName: string;
   dateRange: string;
   daysLeft: number;
+  status?: "WAITING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
   roles: string[];
   skills: string[];
   currentMembers: number;
@@ -120,9 +121,25 @@ function DynamicTagList({ tags, textColorClass }: { tags: string[], textColorCla
   );
 }
 
+const STATUS_CONFIG = {
+  WAITING:     { label: "รอเริ่ม",       cls: "bg-orange-50 text-orange-500 border border-orange-200" },
+  IN_PROGRESS: { label: "กำลังแข่งขัน", cls: "bg-red-50 text-red-500 border border-red-200" },
+  COMPLETED:   { label: "จบแล้ว",        cls: "bg-green-50 text-green-600 border border-green-200" },
+  CANCELLED:   { label: "ยกเลิก",        cls: "bg-gray-100 text-gray-400 border border-gray-200" },
+  EXPIRED:     { label: "หมดเวลา",       cls: "bg-gray-100 text-gray-500 border border-gray-300" },
+} as const;
+
 export default function TeamCard({ data, onRequest, onCancel }: TeamCardProps) {
   const isUrgent = data.daysLeft <= 1;
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const isExpired = data.daysLeft === 0 &&
+    (data.status === "WAITING" || data.status === "IN_PROGRESS");
+
+  const statusKey = isExpired
+    ? "EXPIRED"
+    : data.status ?? null;
+  const statusCfg = statusKey ? STATUS_CONFIG[statusKey as keyof typeof STATUS_CONFIG] : null;
 
   return (
     <article className="bg-white border border-gray-200 rounded-2xl shadow-sm p-6 flex flex-col gap-4 hover:shadow-md transition-shadow h-fit w-full">
@@ -140,11 +157,18 @@ export default function TeamCard({ data, onRequest, onCancel }: TeamCardProps) {
           </div>
         </div>
 
-        <div className={`flex items-center gap-1.5 font-bold shrink-0 ${isUrgent ? 'text-red-500' : 'text-[#1b3168]'}`}>
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span className="text-base">{data.daysLeft} วัน</span>
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          {statusCfg && (
+            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${statusCfg.cls}`}>
+              {statusCfg.label}
+            </span>
+          )}
+          <div className={`flex items-center gap-1 font-bold ${isUrgent ? 'text-red-500' : 'text-[#1b3168]'}`}>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-sm">{isExpired ? "เริ่มแล้ว" : `อีก ${data.daysLeft} วัน`}</span>
+          </div>
         </div>
       </div>
 
@@ -275,12 +299,18 @@ export default function TeamCard({ data, onRequest, onCancel }: TeamCardProps) {
             </svg>
           </button>
           {(!data.joinStatus || data.joinStatus === "open" || data.joinStatus === "rejected") && (
-            <button
-              onClick={onRequest}
-              className="bg-[#1b3168] text-white text-xs font-bold tracking-widest px-6 py-2 rounded-full hover:bg-[#12224f] transition-colors"
-            >
-              REQUEST
-            </button>
+            isExpired ? (
+              <span className="bg-gray-100 text-gray-400 text-xs font-bold px-6 py-2 rounded-full border border-gray-200 cursor-not-allowed">
+                หมดเวลา
+              </span>
+            ) : (
+              <button
+                onClick={onRequest}
+                className="bg-[#1b3168] text-white text-xs font-bold tracking-widest px-6 py-2 rounded-full hover:bg-[#12224f] transition-colors"
+              >
+                REQUEST
+              </button>
+            )
           )}
           {data.joinStatus === "pending" && (
             <button

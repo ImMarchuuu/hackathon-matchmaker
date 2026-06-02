@@ -5,7 +5,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.db import db_dependency
 from app.core.deps import get_current_user_id
-from app.models.team import AddMemberRequest, JoinRequestAction, JoinRequestCreate, TeamCreateRequest, TeamDetailResponse, TeamResponse, TeamStatusUpdateRequest, TeamUpdateRequest
+from app.models.team import AcceptInviteRequest, AddMemberRequest, JoinRequestAction, JoinRequestCreate, TeamCreateRequest, TeamDetailResponse, TeamResponse, TeamStatusUpdateRequest, TeamUpdateRequest
 from app.models.user import RoleName
 import redis.asyncio as aioredis
 
@@ -105,6 +105,25 @@ async def kick_member(
     db: AsyncIOMotorDatabase = Depends(db_dependency),
 ) -> TeamDetailResponse:
     return await team_service.kick_member(db, team_id, current_user_id, user_id)
+
+
+@router.post("/{team_id}/invites/accept", status_code=204, summary="Accept a team invite")
+async def accept_invite(
+    team_id: str,
+    payload: AcceptInviteRequest = AcceptInviteRequest(),
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+) -> None:
+    await team_service.accept_invite(db, team_id, current_user_id, payload.roles, payload.skills)
+
+
+@router.post("/{team_id}/invites/decline", status_code=204, summary="Decline a team invite")
+async def decline_invite(
+    team_id: str,
+    current_user_id: str = Depends(get_current_user_id),
+    db: AsyncIOMotorDatabase = Depends(db_dependency),
+) -> None:
+    await team_service.decline_invite(db, team_id, current_user_id)
 
 
 @router.patch("/{team_id}/status", status_code=204, summary="Cancel or complete a team (leader only)")

@@ -108,20 +108,31 @@ function DynamicTagList({ tags, textColorClass }: { tags: string[]; textColorCla
 export default function ActiveTeamCard({ data }: { data: ActiveTeamCardData }) {
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
-  const isWaiting = data.status === "WAITING";
+
+  const isExpired = data.daysLeft === 0 &&
+    (data.status === "WAITING" || data.status === "IN_PROGRESS");
 
   // ── Timer badge (top-right) ─────────────────────────────────────────────────
-  const timerLabel = isWaiting
-    ? `รอเริ่ม ${data.daysLeft} วัน`
-    : `จบใน ${data.daysLeft} วัน`;
+  const timerLabel = isExpired
+    ? "เริ่มแล้ว"
+    : data.status === "IN_PROGRESS"
+    ? "กำลังดำเนินการ"
+    : `อีก ${data.daysLeft} วัน`;
 
-  const timerColorClass = isWaiting ? "text-orange-500" : "text-red-600";
+  const timerColorClass = isExpired ? "text-gray-400"
+    : data.status === "WAITING" ? "text-orange-500" : "text-red-600";
 
   // ── Status badge (bottom-right) ─────────────────────────────────────────────
-  const statusLabel = isWaiting ? "รอเริ่มการแข่งขัน" : "กำลังแข่งขัน";
-  const statusBadgeClass = isWaiting
-    ? "bg-orange-50 text-orange-600 border border-orange-200"
-    : "bg-red-50 text-red-600 border border-red-200";
+  const STATUS_MAP = {
+    WAITING:     { label: "รอเริ่มการแข่งขัน", cls: "bg-orange-50 text-orange-600 border border-orange-200" },
+    IN_PROGRESS: { label: "กำลังแข่งขัน",       cls: "bg-red-50 text-red-600 border border-red-200" },
+    COMPLETED:   { label: "จบแล้ว",              cls: "bg-green-50 text-green-600 border border-green-200" },
+    CANCELLED:   { label: "ยกเลิกแล้ว",          cls: "bg-gray-100 text-gray-500 border border-gray-200" },
+    EXPIRED:     { label: "หมดเวลา",              cls: "bg-gray-100 text-gray-500 border border-gray-300" },
+  } as const;
+  const statusKey = isExpired ? "EXPIRED" : data.status;
+  const statusCfg = STATUS_MAP[statusKey as keyof typeof STATUS_MAP] ?? STATUS_MAP.IN_PROGRESS;
+  const { label: statusLabel, cls: statusBadgeClass } = statusCfg;
 
   return (
     <Link

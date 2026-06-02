@@ -14,6 +14,8 @@ export const MOCK_TEAMS: TeamCardViewModel[] = [
     authorName: "นายกิตติพงศ์ สุขใจ",
     dateRange: "1 Jan 2569 - 15 Jan 2569",
     daysLeft: 1,
+    status: "WAITING",
+    joinStatus: "open",
     roles: ["Developer", "AI / Data"],
     skills: ["React", "Tailwind", "Python", "FastAPI", "Docker"],
     currentMemberCount: 3,
@@ -37,6 +39,8 @@ export const MOCK_TEAMS: TeamCardViewModel[] = [
     authorName: "สมศรี ใจดี",
     dateRange: "20 Jan 2569 - 22 Jan 2569",
     daysLeft: 5,
+    status: "IN_PROGRESS",
+    joinStatus: "open",
     roles: ["Business", "AI / Data", "Pitching"],
     skills: ["TensorFlow", "Figma", "Business Model Canvas"],
     currentMemberCount: 2,
@@ -58,6 +62,8 @@ export const MOCK_TEAMS: TeamCardViewModel[] = [
     authorName: "วรัญญู เก่งมาก",
     dateRange: "5 Feb 2569 - 7 Feb 2569",
     daysLeft: 12,
+    status: "WAITING",
+    joinStatus: "open",
     roles: ["Developer", "UI/UX Designer", "Pitching"],
     skills: ["Next.js", "Node.js", "Prisma", "PostgreSQL"],
     currentMemberCount: 1,
@@ -77,6 +83,8 @@ export const MOCK_TEAMS: TeamCardViewModel[] = [
     authorName: "ธนาคม รุ่งเรือง",
     dateRange: "10 Feb 2569 - 12 Feb 2569",
     daysLeft: 3,
+    status: "WAITING",
+    joinStatus: "open",
     roles: ["Developer", "Business"],
     skills: ["Flutter", "Firebase", "Stripe", "Go"],
     currentMemberCount: 2,
@@ -96,6 +104,7 @@ export const MOCK_TEAMS: TeamCardViewModel[] = [
 export const MOCK_PEOPLE: PeopleCardViewModel[] = [
   {
     id: "onb-p1",
+    username: "chanut_dev",
     name: "ชานนท์ สุนทรภักดี",
     bio: "Full-stack developer ชอบ React, Next.js, และ DevOps. กำลังหาทีมสำหรับ NSC 2569.",
     avatarUrl: "https://i.pravatar.cc/150?u=onb-p1",
@@ -105,6 +114,7 @@ export const MOCK_PEOPLE: PeopleCardViewModel[] = [
   },
   {
     id: "onb-p2",
+    username: "pimphisa_ux",
     name: "พิมพ์พิศา สุขใจ",
     bio: "UX/UI Designer & Brand Strategist. เชี่ยวชาญ Figma, Design System, และ User Research.",
     avatarUrl: "https://i.pravatar.cc/150?u=onb-p2",
@@ -114,6 +124,7 @@ export const MOCK_PEOPLE: PeopleCardViewModel[] = [
   },
   {
     id: "onb-p3",
+    username: "surachai_ai",
     name: "สุรชัย ดีเลิศ",
     bio: "AI/ML Engineer สนใจ NLP และ Computer Vision. อยากร่วมทีม Hackathon ที่ท้าทาย.",
     avatarUrl: "https://i.pravatar.cc/150?u=onb-p3",
@@ -123,6 +134,7 @@ export const MOCK_PEOPLE: PeopleCardViewModel[] = [
   },
   {
     id: "onb-p4",
+    username: "aranya_biz",
     name: "อรัญญา ธรรมดี",
     bio: "Business & Pitching specialist. ชนะรางวัล Best Pitcher จาก Startup Thailand 2568.",
     avatarUrl: "https://i.pravatar.cc/150?u=onb-p4",

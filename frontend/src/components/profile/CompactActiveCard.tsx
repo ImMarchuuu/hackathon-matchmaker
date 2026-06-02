@@ -7,7 +7,7 @@ export interface CompactActiveTeam {
   daysLeft: number;
   currentMembers: number;
   maxMembers: number;
-  status: "WAITING" | "IN_PROGRESS";
+  status: "WAITING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
 }
 
 export default function CompactActiveCard({
@@ -46,11 +46,15 @@ export default function CompactActiveCard({
       <div className="flex items-center justify-between mt-auto pt-2">
         {/* Status badge */}
         <div className={`font-extrabold text-sm px-5 py-2 rounded-full shadow-sm tracking-wide whitespace-nowrap ${
-          status === "IN_PROGRESS"
-            ? "bg-[#FBBF24] text-white"
-            : "bg-orange-100 text-orange-600"
+          status === "IN_PROGRESS" ? "bg-[#FBBF24] text-white" :
+          status === "COMPLETED"   ? "bg-green-100 text-green-600" :
+          status === "CANCELLED"   ? "bg-gray-100 text-gray-500" :
+          "bg-orange-100 text-orange-600"
         }`}>
-          {status === "IN_PROGRESS" ? "กำลังร่วมทีม" : "รอเริ่ม"}
+          {status === "IN_PROGRESS" ? "กำลังร่วมทีม" :
+           status === "COMPLETED"   ? "จบแล้ว" :
+           status === "CANCELLED"   ? "ยกเลิกแล้ว" :
+           "รอเริ่ม"}
         </div>
 
         {/* Member count */}

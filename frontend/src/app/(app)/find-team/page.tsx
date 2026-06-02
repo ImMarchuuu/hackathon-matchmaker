@@ -176,6 +176,7 @@ export default function FindTeamPage() {
                     authorName: team.authorName,
                     dateRange: team.dateRange,
                     daysLeft: team.daysLeft,
+                    status: team.status,
                     roles: team.roles,
                     skills: team.skills,
                     currentMembers: team.currentMemberCount,

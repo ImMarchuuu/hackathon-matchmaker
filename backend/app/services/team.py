@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from motor.motor_asyncio import AsyncIOMotorDatabase
 import redis.asyncio as aioredis
 
-from app.models.team import JoinRequest, TeamCreateRequest, TeamDetailResponse, TeamResponse, TeamUpdateRequest
+from app.models.team import Invite, JoinRequest, TeamCreateRequest, TeamDetailResponse, TeamResponse, TeamUpdateRequest
 from app.repositories import catalog as catalog_repo
 from app.repositories import notification as notif_repo
 from app.repositories import team as team_repo
@@ -23,22 +23,23 @@ async def create_team(
 
     try:
         start = date.fromisoformat(payload.start_date)
-        end = date.fromisoformat(payload.end_date)
+        end_str = payload.end_date or payload.start_date
+        end = date.fromisoformat(end_str)
     except ValueError:
         raise HTTPException(status_code=422, detail="Dates must be in YYYY-MM-DD format")
 
-    if end <= start:
-        raise HTTPException(status_code=422, detail="end_date must be after start_date")
+    if end < start:
+        raise HTTPException(status_code=422, detail="end_date must not be before start_date")
 
     leader_oid = ObjectId(user_id)
-    days_left = max(0, (end - date.today()).days)
+    days_left = max(0, (start - date.today()).days)
 
     doc = {
         "title": payload.title,
         "leader_id": leader_oid,
         "status": "WAITING",
         "start_date": payload.start_date,
-        "end_date": payload.end_date,
+        "end_date": end_str,
         "days_left": days_left,
         "required_roles": list(payload.required_roles),
         "required_skills": list(payload.required_skills),
@@ -46,6 +47,8 @@ async def create_team(
         "member_ids": [leader_oid],
         "max_members": payload.max_members,
         "description": payload.description,
+        "leader_roles": list(payload.leader_roles),
+        "leader_skills": list(payload.leader_skills),
         "created_at": datetime.utcnow(),
     }
 
@@ -118,6 +121,10 @@ async def send_join_request(
     doc = await team_repo.get_by_id(db, team_oid)
     if not doc:
         raise HTTPException(status_code=404, detail="Team not found")
+
+    # Reject if the event has already started (start_date is the event start)
+    if doc.get("start_date", "9999-12-31") <= date.today().isoformat():
+        raise HTTPException(status_code=409, detail="Team event has already started")
 
     if user_oid in doc.get("member_ids", []):
         raise HTTPException(status_code=409, detail="Already a member")
@@ -249,7 +256,7 @@ async def add_member_direct(
     leader_id: str,
     user_id: str,
 ) -> TeamDetailResponse:
-    """Leader directly adds a user (from favorites) to the team."""
+    """Leader sends a pending invite to a user from favorites."""
     if not ObjectId.is_valid(team_id) or not ObjectId.is_valid(user_id):
         raise HTTPException(status_code=422, detail="Invalid ID format")
 
@@ -260,20 +267,112 @@ async def add_member_direct(
     if not doc:
         raise HTTPException(status_code=404, detail="Team not found")
     if str(doc["leader_id"]) != leader_id:
-        raise HTTPException(status_code=403, detail="Only the team leader can add members")
+        raise HTTPException(status_code=403, detail="Only the team leader can send invites")
     if user_oid in doc.get("member_ids", []):
         raise HTTPException(status_code=409, detail="User is already a member")
     if len(doc.get("member_ids", [])) >= doc.get("max_members", 10):
         raise HTTPException(status_code=409, detail="Team is full")
 
-    await team_repo.add_member(db, team_oid, user_oid)
+    # Prevent duplicate pending invites
+    existing = next(
+        (i for i in doc.get("invites", []) if str(i["user_id"]) == user_id and i["status"] == "pending"),
+        None,
+    )
+    if existing:
+        raise HTTPException(status_code=409, detail="Invite already pending")
+
+    invite = Invite(user_id=user_id).model_dump()
+    await team_repo.add_invite(db, team_oid, invite)
 
     await notif_repo.create(db, user_oid, "team_invite", {
         "team_id": team_id,
         "team_name": doc["title"],
+        "invite_id": invite["id"],
+        "required_roles": doc.get("required_roles", []),
+        "required_skills": doc.get("required_skills", []),
     })
 
     return await get_team_detail(db, team_id)
+
+
+async def accept_invite(
+    db: AsyncIOMotorDatabase,
+    team_id: str,
+    user_id: str,
+    roles: list[str] | None = None,
+    skills: list[str] | None = None,
+) -> None:
+    if not ObjectId.is_valid(team_id) or not ObjectId.is_valid(user_id):
+        raise HTTPException(status_code=422, detail="Invalid ID format")
+
+    team_oid = ObjectId(team_id)
+    user_oid = ObjectId(user_id)
+
+    doc = await team_repo.get_by_id(db, team_oid)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Team not found")
+
+    invite = next(
+        (i for i in doc.get("invites", []) if str(i["user_id"]) == user_id and i["status"] == "pending"),
+        None,
+    )
+    if not invite:
+        raise HTTPException(status_code=404, detail="No pending invite found")
+    if len(doc.get("member_ids", [])) >= doc.get("max_members", 10):
+        raise HTTPException(status_code=409, detail="Team is now full")
+
+    await team_repo.update_invite_status(db, team_oid, user_id, "accepted", roles, skills)
+    await team_repo.add_member(db, team_oid, user_oid)
+
+    # Stamp the invite_resolved field on the user's team_invite notification
+    await notif_repo.stamp_invite_resolved(db, user_oid, team_id, "accepted")
+
+    user_doc = await user_repo.get_by_id(db, user_oid)
+    await notif_repo.create(db, doc["leader_id"], "invite_accepted", {
+        "team_id": team_id,
+        "team_name": doc["title"],
+        "user_id": user_id,
+        "user_name": user_doc.get("name", "") if user_doc else "",
+        "user_avatar": user_doc.get("avatar_url") if user_doc else None,
+        "roles": roles or [],
+        "skills": skills or [],
+    })
+
+
+async def decline_invite(
+    db: AsyncIOMotorDatabase,
+    team_id: str,
+    user_id: str,
+) -> None:
+    if not ObjectId.is_valid(team_id) or not ObjectId.is_valid(user_id):
+        raise HTTPException(status_code=422, detail="Invalid ID format")
+
+    team_oid = ObjectId(team_id)
+    user_oid = ObjectId(user_id)
+
+    doc = await team_repo.get_by_id(db, team_oid)
+    if not doc:
+        raise HTTPException(status_code=404, detail="Team not found")
+
+    invite = next(
+        (i for i in doc.get("invites", []) if str(i["user_id"]) == user_id and i["status"] == "pending"),
+        None,
+    )
+    if not invite:
+        raise HTTPException(status_code=404, detail="No pending invite found")
+
+    await team_repo.update_invite_status(db, team_oid, user_id, "declined")
+
+    # Stamp the invite_resolved field on the user's team_invite notification
+    await notif_repo.stamp_invite_resolved(db, user_oid, team_id, "declined")
+
+    user_doc = await user_repo.get_by_id(db, user_oid)
+    await notif_repo.create(db, doc["leader_id"], "invite_declined", {
+        "team_id": team_id,
+        "team_name": doc["title"],
+        "user_id": user_id,
+        "user_name": user_doc.get("name", "") if user_doc else "",
+    })
 
 
 async def kick_member(
@@ -348,26 +447,63 @@ async def complete_team(
         raise HTTPException(status_code=403, detail="Only the team leader can complete the team")
 
     member_ids = doc.get("member_ids", [])
-    roles = doc.get("required_roles", [])
-    skills = doc.get("required_skills", [])
+    team_roles = doc.get("required_roles", [])
+    team_skills = doc.get("required_skills", [])
+    leader_roles = doc.get("leader_roles") or team_roles
+    leader_skills = doc.get("leader_skills") or team_skills
+
+    # Build per-member role/skill map from approved join requests
+    member_declared: dict[str, dict] = {}
+    for req in doc.get("join_requests", []):
+        if req.get("status") == "approved":
+            member_declared[str(req["user_id"])] = {
+                "roles": req.get("roles") or [],
+                "skills": req.get("skills") or [],
+            }
+    # Also pick up roles/skills declared by invited members at accept time
+    for inv in doc.get("invites", []):
+        if inv.get("status") == "accepted":
+            uid = str(inv["user_id"])
+            if uid not in member_declared:
+                member_declared[uid] = {
+                    "roles": inv.get("roles") or [],
+                    "skills": inv.get("skills") or [],
+                }
 
     # For each member: add a competition_experience entry then recompute ranks
-    if roles:
-        for mid in member_ids:
-            other_ids = [str(m) for m in member_ids if m != mid]
-            comp_entry = {
-                "id": uuid.uuid4().hex,
-                "competition_name": doc["title"],
-                "detail": "",
-                "roles": roles,
-                "skills": skills,
-                "contributor_ids": other_ids,
-            }
-            await db["users"].update_one(
-                {"_id": mid},
-                {"$push": {"competition_experiences": comp_entry}},
-            )
-            await recompute_from_competitions(db, redis, mid)
+    for mid in member_ids:
+        mid_str = str(mid)
+        declared = member_declared.get(mid_str)
+
+        if declared:
+            member_roles = declared["roles"] or team_roles
+            member_skills = declared["skills"] or team_skills
+        else:
+            # Leader — use their explicitly declared role/skills
+            member_roles = leader_roles
+            member_skills = leader_skills
+
+        if not member_roles:
+            continue  # CompetitionExperience requires at least 1 role
+
+        other_ids = [str(m) for m in member_ids if m != mid]
+        comp_entry = {
+            "id": uuid.uuid4().hex,
+            "competition_name": doc["title"],
+            "detail": "",
+            "roles": member_roles,
+            "skills": member_skills,
+            "contributor_ids": other_ids,
+            "type": "team",
+            "team_id": team_id,
+            "date": date.today().isoformat(),
+            "github_url": None,
+        }
+        await db["users"].update_one(
+            {"_id": mid},
+            {"$push": {"competition_experiences": comp_entry}},
+        )
+        await recompute_from_competitions(db, redis, mid)
 
     await team_repo.update_fields(db, team_oid, {"status": "COMPLETED"})
 

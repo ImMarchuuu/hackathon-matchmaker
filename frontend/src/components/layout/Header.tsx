@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/lib/api";
 import type { ApiUser } from "@/types/profile";
+import JoinRequestModal from "@/components/team/JoinRequestModal";
 
 function ProfilePopup({ onClose, user }: { onClose: () => void; user: ApiUser | null }) {
   return (
@@ -81,6 +82,31 @@ function NotificationPopup({ onUnreadCount }: { onUnreadCount: (n: number) => vo
 
   const [resolvingId, setResolvingId] = React.useState<string | null>(null);
   const [resolvedMap, setResolvedMap] = React.useState<Record<string, "approved" | "rejected" | "error">>({});
+  const [inviteResolvingId, setInviteResolvingId] = React.useState<string | null>(null);
+  const [inviteResolvedMap, setInviteResolvedMap] = React.useState<Record<string, "accepted" | "declined" | "error">>({});
+  const [inviteAcceptPending, setInviteAcceptPending] = React.useState<{
+    notifId: string;
+    teamId: string;
+    teamName: string;
+    requiredRoles: string[];
+    requiredSkills: string[];
+  } | null>(null);
+
+  async function resolveInvite(notifId: string, teamId: string, action: "accept" | "decline", roles?: string[], skills?: string[]) {
+    setInviteResolvingId(notifId);
+    try {
+      const body = action === "accept" ? JSON.stringify({ roles: roles ?? [], skills: skills ?? [] }) : undefined;
+      await apiFetch(`/api/v1/teams/${teamId}/invites/${action}`, { method: "POST", body });
+      setInviteResolvedMap((prev) => ({ ...prev, [notifId]: action === "accept" ? "accepted" : "declined" }));
+    } catch {
+      setInviteResolvedMap((prev) => ({ ...prev, [notifId]: "error" }));
+      setTimeout(() => {
+        setInviteResolvedMap((prev) => { const next = { ...prev }; delete next[notifId]; return next; });
+      }, 2500);
+    } finally {
+      setInviteResolvingId(null);
+    }
+  }
 
   async function clearAll() {
     await apiFetch("/api/v1/notifications", { method: "DELETE" }).catch(() => {});
@@ -136,6 +162,22 @@ function NotificationPopup({ onUnreadCount }: { onUnreadCount: (n: number) => vo
 
         {!loading && notifications.length === 0 && (
           <p className="text-gray-400 text-sm text-center py-8">ยังไม่มีการแจ้งเตือน</p>
+        )}
+
+        {inviteAcceptPending && (
+          <JoinRequestModal
+            teamTitle={inviteAcceptPending.teamName}
+            availableRoles={inviteAcceptPending.requiredRoles}
+            availableSkills={inviteAcceptPending.requiredSkills}
+            title="ตอบรับคำเชิญ"
+            submitLabel="ยืนยันเข้าร่วม"
+            saving={inviteResolvingId === inviteAcceptPending.notifId}
+            onClose={() => setInviteAcceptPending(null)}
+            onSubmit={async (roles, skills) => {
+              await resolveInvite(inviteAcceptPending.notifId, inviteAcceptPending.teamId, "accept", roles, skills);
+              setInviteAcceptPending(null);
+            }}
+          />
         )}
 
         {notifications.map((notif) => {
@@ -263,22 +305,54 @@ function NotificationPopup({ onUnreadCount }: { onUnreadCount: (n: number) => vo
 
           // ── team_invite ───────────────────────────────────────────────────────
           if (notif.type === "team_invite") {
+            const inviteResult = p.invite_resolved ?? inviteResolvedMap[notif.id];
+            const canAct = !inviteResult && !!p.team_id;
             return (
               <div key={notif.id} className={base}>
                 <div className="flex gap-3 items-start">
                   <div className="w-10 h-10 rounded-full bg-blue-100 text-[#1b3168] flex items-center justify-center shrink-0">
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" /></svg>
                   </div>
-                  <div className="flex flex-col gap-1 min-w-0">
+                  <div className="flex flex-col gap-2 min-w-0 w-full">
                     <p className="text-sm text-gray-700 leading-relaxed">
-                      คุณถูกเพิ่มเข้าทีม{" "}
+                      คุณได้รับคำเชิญเข้าร่วมทีม{" "}
                       <Link href={p.team_id ? `/teams/${p.team_id}` : "#"} className="font-bold text-[#1b3168] hover:underline">{p.team_name}</Link>
                     </p>
                     <p className="text-[10px] text-gray-400 font-medium">{fmtTime(notif.created_at)}</p>
-                    {p.team_id && (
-                      <Link href={`/teams/${p.team_id}`} className="mt-1 self-start text-xs font-bold text-[#1b3168] bg-blue-50 px-3 py-1 rounded-full hover:bg-blue-100 transition-colors">
-                        ดูทีม →
-                      </Link>
+
+                    {inviteResult === "accepted" && (
+                      <p className="text-xs font-bold text-green-600 bg-green-50 rounded-xl px-3 py-2">✓ คุณเข้าร่วมทีมแล้ว</p>
+                    )}
+                    {inviteResult === "declined" && (
+                      <p className="text-xs font-bold text-gray-500 bg-gray-50 rounded-xl px-3 py-2">✕ คุณปฏิเสธคำเชิญแล้ว</p>
+                    )}
+                    {inviteResult === "error" && (
+                      <p className="text-xs font-bold text-red-500">เกิดข้อผิดพลาด ลองใหม่อีกครั้ง</p>
+                    )}
+
+                    {canAct && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setInviteAcceptPending({
+                            notifId: notif.id,
+                            teamId: p.team_id!,
+                            teamName: p.team_name ?? "",
+                            requiredRoles: p.required_roles ?? [],
+                            requiredSkills: p.required_skills ?? [],
+                          })}
+                          disabled={inviteResolvingId === notif.id}
+                          className="flex-1 bg-[#233876] text-white py-2 rounded-xl text-xs font-bold hover:bg-[#1a2a5c] transition-colors shadow-sm disabled:opacity-50"
+                        >
+                          {inviteResolvingId === notif.id ? "…" : "รับ"}
+                        </button>
+                        <button
+                          onClick={() => resolveInvite(notif.id, p.team_id!, "decline")}
+                          disabled={inviteResolvingId === notif.id}
+                          className="flex-1 bg-white border border-gray-200 text-gray-700 py-2 rounded-xl text-xs font-bold hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-50"
+                        >
+                          {inviteResolvingId === notif.id ? "…" : "ปฏิเสธ"}
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -338,9 +412,51 @@ function NotificationPopup({ onUnreadCount }: { onUnreadCount: (n: number) => vo
                       ทีม <span className="font-bold text-[#1b3168]">{p.team_name}</span> จบแล้ว! Skills เข้า Skill Bank ของคุณแล้ว 🎉
                     </p>
                     <p className="text-[10px] text-gray-400 font-medium">{fmtTime(notif.created_at)}</p>
-                    <Link href="/active-teams" className="mt-1 self-start text-xs font-bold text-white bg-green-500 px-3 py-1 rounded-full hover:bg-green-600 transition-colors">
+                    <Link href={p.team_id ? `/teams/${p.team_id}/rate` : "/active-teams"} className="mt-1 self-start text-xs font-bold text-white bg-green-500 px-3 py-1 rounded-full hover:bg-green-600 transition-colors">
                       ให้คะแนนเพื่อนร่วมทีม →
                     </Link>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // ── invite_accepted ───────────────────────────────────────────────────
+          if (notif.type === "invite_accepted") {
+            return (
+              <div key={notif.id} className={base}>
+                <div className="flex gap-3 items-start">
+                  <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-200 shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={p.user_avatar ?? "/avatar.png"} alt="" className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                      <span className="font-bold text-[#1b3168]">{p.user_name}</span> ตอบรับคำเชิญเข้าร่วมทีม{" "}
+                      <Link href={p.team_id ? `/teams/${p.team_id}` : "#"} className="font-bold text-[#1b3168] hover:underline">{p.team_name}</Link>
+                      {" "}<span className="text-green-500 font-bold">✓</span>
+                    </p>
+                    <p className="text-[10px] text-gray-400 font-medium">{fmtTime(notif.created_at)}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // ── invite_declined ───────────────────────────────────────────────────
+          if (notif.type === "invite_declined") {
+            return (
+              <div key={notif.id} className={base}>
+                <div className="flex gap-3 items-start">
+                  <div className="w-10 h-10 rounded-full bg-gray-100 text-gray-400 flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                  </div>
+                  <div className="flex flex-col gap-1 min-w-0">
+                    <p className="text-sm text-gray-700 leading-relaxed">
+                      <span className="font-bold text-[#1b3168]">{p.user_name}</span> ปฏิเสธคำเชิญเข้าร่วมทีม{" "}
+                      <span className="font-bold text-[#1b3168]">{p.team_name}</span>
+                    </p>
+                    <p className="text-[10px] text-gray-400 font-medium">{fmtTime(notif.created_at)}</p>
                   </div>
                 </div>
               </div>

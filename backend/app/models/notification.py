@@ -14,6 +14,8 @@ NotificationType = Literal[
     "team_kicked",
     "team_cancelled",
     "team_completed",
+    "invite_accepted",
+    "invite_declined",
 ]
 
 

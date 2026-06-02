@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { ApiCompetitionExperience, ApiUser } from "@/types/profile";
+import type { ApiCompetitionExperience } from "@/types/profile";
+import type { ApiUser } from "@/types/profile";
 import { apiFetch } from "@/lib/api";
 import CompetitionModal from "./CompetitionModal";
 
@@ -18,7 +19,7 @@ interface CompetitionSectionProps {
   competitions: ApiCompetitionExperience[];
   allUsers: ApiUser[];
   isCurrentUser: boolean;
-  onUpdated: (updatedUser: ApiUser) => void;
+  onUpdated: (updatedList: ApiCompetitionExperience[]) => void;
 }
 
 export default function CompetitionSection({
@@ -36,11 +37,11 @@ export default function CompetitionSection({
   async function handleDelete(comp_id: string) {
     setDeletingId(comp_id);
     try {
-      const updatedUser = await apiFetch<ApiUser>(
+      const updatedList = await apiFetch<ApiCompetitionExperience[]>(
         `/api/v1/users/me/competitions/${comp_id}`,
         { method: "DELETE" }
       );
-      onUpdated(updatedUser);
+      onUpdated(updatedList);
     } finally {
       setDeletingId(null);
     }

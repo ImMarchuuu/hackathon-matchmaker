@@ -45,6 +45,7 @@ def create_app() -> FastAPI:
     from app.api.v1.teams import router as teams_router
     from app.api.v1.catalog import router as catalog_router
     from app.api.v1.notifications import router as notif_router
+    from app.api.v1.reviews import router as reviews_router
 
     application.include_router(health_router, prefix="/api/v1")
     application.include_router(auth_router, prefix="/api/v1")
@@ -52,6 +53,7 @@ def create_app() -> FastAPI:
     application.include_router(teams_router, prefix="/api/v1")
     application.include_router(catalog_router, prefix="/api/v1")
     application.include_router(notif_router, prefix="/api/v1")
+    application.include_router(reviews_router, prefix="/api/v1")
 
     uploads_dir = Path("/app/uploads")
     uploads_dir.mkdir(parents=True, exist_ok=True)
