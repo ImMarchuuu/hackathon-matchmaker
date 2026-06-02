@@ -6,8 +6,8 @@ import type { ApiUser } from "@/types/profile";
 import type { ApiTeam } from "@/types/team";
 import type { TeamCardViewModel, PeopleCardViewModel } from "@/types";
 
-function computeDaysLeft(endDate: string): number {
-  return Math.max(0, Math.ceil((new Date(endDate).getTime() - Date.now()) / 86_400_000));
+function computeDaysLeft(startDate: string): number {
+  return Math.max(0, Math.ceil((new Date(startDate).getTime() - Date.now()) / 86_400_000));
 }
 
 function fmt(dateStr: string): string {
@@ -47,7 +47,8 @@ function buildTeamViewModel(
     title: team.title,
     authorName: leader?.name ?? "Unknown",
     dateRange: `${fmt(team.start_date)} - ${fmt(team.end_date)}`,
-    daysLeft: computeDaysLeft(team.end_date),
+    daysLeft: computeDaysLeft(team.start_date),
+    status: team.status,
     roles: team.required_roles,
     skills: team.required_skills,
     currentMemberCount: team.member_ids.length,

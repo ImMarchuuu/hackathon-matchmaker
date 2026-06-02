@@ -37,6 +37,11 @@ export interface ApiCompetitionExperience {
   roles: string[];
   skills: string[];
   contributor_ids: string[];
+  type: "project" | "team";
+  team_id: string | null;
+  date: string | null;
+  github_url: string | null;
+  reviewed: boolean;
 }
 
 export interface ApiUser {
@@ -57,7 +62,7 @@ export interface ApiUser {
   role: ApiRoleEntry[];
   skills: ApiSkillEntry[];
   portfolios: unknown[];
-  competition_experiences: ApiCompetitionExperience[];
+  display_roles: string[];
 }
 
 export interface CompetitionItem {

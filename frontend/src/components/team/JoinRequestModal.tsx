@@ -7,6 +7,8 @@ interface JoinRequestModalProps {
   availableRoles: string[];
   availableSkills: string[];
   saving?: boolean;
+  title?: string;
+  submitLabel?: string;
   onClose: () => void;
   onSubmit: (roles: string[], skills: string[]) => void;
 }
@@ -16,6 +18,8 @@ export default function JoinRequestModal({
   availableRoles,
   availableSkills,
   saving,
+  title = "ขอเข้าร่วมทีม",
+  submitLabel = "ส่งคำขอ",
   onClose,
   onSubmit,
 }: JoinRequestModalProps) {
@@ -33,7 +37,7 @@ export default function JoinRequestModal({
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-xl font-extrabold text-[#1b3168]">ขอเข้าร่วมทีม</h2>
+            <h2 className="text-xl font-extrabold text-[#1b3168]">{title}</h2>
             <p className="text-sm text-gray-500 mt-0.5">{teamTitle}</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100 text-gray-400 shrink-0">
@@ -115,7 +119,7 @@ export default function JoinRequestModal({
             disabled={saving || (availableRoles.length > 0 && roles.length === 0)}
             className="flex-1 py-3 rounded-full bg-[#1b3168] text-white text-sm font-bold hover:bg-[#12224f] disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {saving ? "กำลังส่ง…" : "ส่งคำขอ"}
+            {saving ? "กำลังส่ง…" : submitLabel}
           </button>
         </div>
       </div>

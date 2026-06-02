@@ -22,13 +22,14 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
   const [allUsers, setAllUsers] = useState<ApiUser[]>([]);
   const [competitions, setCompetitions] = useState<ApiCompetitionExperience[]>([]);
 
-  function handleCompetitionUpdated(updatedUser: ApiUser) {
-    setUser(updatedUser);
-    setCompetitions(updatedUser.competition_experiences ?? []);
-    // Re-fetch rank summary so role/skill sections reflect updated counts instantly
-    apiFetch<ApiRankSummary>(`/api/v1/users/${updatedUser._id}/rank-summary`)
-      .then(setRankSummary)
-      .catch(() => {});
+  function handleCompetitionUpdated(updatedList: ApiCompetitionExperience[]) {
+    setCompetitions(updatedList);
+    if (user) {
+      // Re-fetch rank summary so role/skill sections reflect updated counts instantly
+      apiFetch<ApiRankSummary>(`/api/v1/users/${user._id}/rank-summary`)
+        .then(setRankSummary)
+        .catch(() => {});
+    }
   }
   const [teams, setTeams] = useState<CompactActiveTeam[]>([]);
   const [rankSummary, setRankSummary] = useState<ApiRankSummary | null>(null);
@@ -51,23 +52,28 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
       .then(([profile, currentUser]) => {
         setUser(profile);
         setMe(currentUser);
-        setCompetitions(profile.competition_experiences ?? []);
 
         // non-critical secondary fetches — fail silently
+        apiFetch<ApiCompetitionExperience[]>(`/api/v1/users/${profile._id}/competitions`)
+          .then(setCompetitions)
+          .catch(() => {});
+
         apiFetch<ApiTeam[]>(`/api/v1/users/${profile._id}/teams`)
-          .then((apiTeams) =>
-            setTeams(
-              apiTeams.map((t) => ({
+          .then((apiTeams) => {
+            const mapped = apiTeams
+              .filter((t) => t.status === "WAITING" || t.status === "IN_PROGRESS")
+              .map((t) => ({
                 id: t._id,
                 teamName: t.title,
                 dateRange: `${fmt(t.start_date)} – ${fmt(t.end_date)}`,
-                daysLeft: daysLeft(t.end_date),
+                daysLeft: daysLeft(t.start_date),
                 currentMembers: t.member_ids.length,
                 maxMembers: t.max_members,
                 status: t.status,
-              }))
-            )
-          )
+              }));
+            mapped.sort((a, b) => a.daysLeft - b.daysLeft);
+            setTeams(mapped);
+          })
           .catch(() => {});
 
         apiFetch<ApiRankSummary>(`/api/v1/users/${profile._id}/rank-summary`)
@@ -93,6 +99,16 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
   if (missing || !user) return notFound();
 
   const isCurrentUser = !!me && me._id === user._id;
+
+  // display_roles: explicit selection → else top-2 by project_count from rank summary
+  const displayRoles: string[] =
+    user.display_roles?.length
+      ? user.display_roles.slice(0, 2)
+      : (rankSummary?.roles ?? user.role)
+          .slice()
+          .sort((a, b) => (b as { project_count: number }).project_count - (a as { project_count: number }).project_count)
+          .slice(0, 2)
+          .map((r) => r.name);
 
   // Prefer live rank-summary data; fall back to stored user fields
   const roles: RoleWithRank[] = rankSummary
@@ -127,6 +143,18 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
           <section className="flex items-start justify-between w-full" aria-label="User information">
             <div className="text-left">
               <h1 className="text-2xl sm:text-3xl font-extrabold text-[#233876] tracking-tight">{user.name}</h1>
+              {displayRoles.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {displayRoles.map((role) => (
+                    <span
+                      key={role}
+                      className="px-3 py-1 rounded-full text-xs font-bold bg-[#1b3168] text-white"
+                    >
+                      {role}
+                    </span>
+                  ))}
+                </div>
+              )}
               <p className="text-sm sm:text-base text-[#233876] flex items-center gap-1.5 mt-1 font-semibold">
                 <span className="flex items-center justify-center w-5 h-5">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>

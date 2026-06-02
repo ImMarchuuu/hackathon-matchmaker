@@ -8,12 +8,20 @@ async def get_all(
     status: str | None = None,
     role: str | None = None,
 ) -> list[dict]:
+    from datetime import date as _date
+    today = _date.today().isoformat()
+
     query: dict = {
-        # Hide full teams from the feed: members < max_members
+        # Only show active teams in the discovery feed
+        "status": {"$in": ["WAITING", "IN_PROGRESS"]},
+        # Exclude teams whose event has already started (can't join) or ended
+        "start_date": {"$gte": today},
+        "end_date": {"$gte": today},
+        # Hide full teams: members < max_members
         "$expr": {"$lt": [{"$size": "$member_ids"}, "$max_members"]},
     }
     if status:
-        query["status"] = status
+        query["status"] = status  # explicit filter overrides the default
     if role:
         query["required_roles"] = role
     cursor = db["teams"].find(query).sort("created_at", -1)
@@ -83,6 +91,40 @@ async def add_member(
     return await db["teams"].find_one_and_update(
         {"_id": team_id},
         {"$addToSet": {"member_ids": user_id}},
+        return_document=ReturnDocument.AFTER,
+    )
+
+
+async def add_invite(
+    db: AsyncIOMotorDatabase,
+    team_id: ObjectId,
+    invite: dict,
+) -> dict | None:
+    from pymongo import ReturnDocument
+    return await db["teams"].find_one_and_update(
+        {"_id": team_id},
+        {"$push": {"invites": invite}},
+        return_document=ReturnDocument.AFTER,
+    )
+
+
+async def update_invite_status(
+    db: AsyncIOMotorDatabase,
+    team_id: ObjectId,
+    user_id: str,
+    status: str,
+    roles: list[str] | None = None,
+    skills: list[str] | None = None,
+) -> dict | None:
+    from pymongo import ReturnDocument
+    update: dict = {"$set": {"invites.$.status": status}}
+    if roles is not None:
+        update["$set"]["invites.$.roles"] = roles
+    if skills is not None:
+        update["$set"]["invites.$.skills"] = skills
+    return await db["teams"].find_one_and_update(
+        {"_id": team_id, "invites.user_id": user_id, "invites.status": "pending"},
+        update,
         return_document=ReturnDocument.AFTER,
     )
 

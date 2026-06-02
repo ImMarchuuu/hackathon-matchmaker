@@ -7,6 +7,12 @@ import { apiFetch } from "@/lib/api";
 import type { ApiUser } from "@/types/profile";
 import type { ApiJoinRequest } from "@/types/team";
 
+interface ApiInvite {
+  id: string;
+  user_id: string;
+  status: "pending" | "accepted" | "declined";
+}
+
 interface ApiTeamDetail {
   _id: string;
   title: string;
@@ -22,6 +28,7 @@ interface ApiTeamDetail {
   max_members: number;
   description?: string;
   join_requests: ApiJoinRequest[];
+  invites: ApiInvite[];
 }
 
 const ALL_ROLES = ["Developer", "Business", "UI/UX Designer", "Marketing", "AI / Data", "Pitching"];
@@ -51,6 +58,7 @@ export default function ManageTeamPage({ params }: { params: { id: string } }) {
   const [actioning, setActioning] = useState(false);
   const [kickingId, setKickingId] = useState<string | null>(null);
   const [addingId, setAddingId] = useState<string | null>(null);
+  const [optimisticInvited, setOptimisticInvited] = useState<Set<string>>(new Set());
 
   const loadAll = useCallback(async () => {
     try {
@@ -139,11 +147,12 @@ export default function ManageTeamPage({ params }: { params: { id: string } }) {
     if (!team) return;
     setAddingId(userId);
     try {
-      const updated = await apiFetch<ApiTeamDetail>(
+      await apiFetch<ApiTeamDetail>(
         `/api/v1/teams/${team._id}/members`,
         { method: "POST", body: JSON.stringify({ user_id: userId }) }
       );
-      setTeam(updated);
+      setOptimisticInvited((prev) => new Set(Array.from(prev).concat(userId)));
+      await loadAll(); // refresh to pick up updated invites list
     } finally {
       setAddingId(null);
     }
@@ -175,6 +184,11 @@ export default function ManageTeamPage({ params }: { params: { id: string } }) {
   if (!team || !me) return null;
 
   const memberSet = new Set(team.member_ids);
+  const pendingInviteIds = new Set(
+    team.invites.filter((i) => i.status === "pending").map((i) => i.user_id)
+      .concat(Array.from(optimisticInvited))
+  );
+  // Show favorites not already in team (invitables + those with pending invites)
   const invitableFavorites = favorites.filter((u) => !memberSet.has(u._id));
 
   return (
@@ -218,7 +232,7 @@ export default function ManageTeamPage({ params }: { params: { id: string } }) {
 
         <div className="grid grid-cols-2 gap-4">
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-gray-500">วันเริ่ม</label>
+            <label className="text-xs font-bold text-gray-500">วันต้นกิจกรรม</label>
             <input
               type="date"
               value={startDate}
@@ -344,13 +358,19 @@ export default function ManageTeamPage({ params }: { params: { id: string } }) {
                     <p className="text-gray-400 text-xs">{fav.role[0]?.name ?? ""}</p>
                   </div>
                 </Link>
-                <button
-                  onClick={() => handleAddFavorite(fav._id)}
-                  disabled={addingId === fav._id || team.member_ids.length >= team.max_members}
-                  className="px-3 py-1.5 rounded-full bg-[#1b3168] text-white text-xs font-bold hover:bg-[#12224f] transition-colors disabled:opacity-50 shrink-0 ml-2"
-                >
-                  {addingId === fav._id ? "…" : "เชิญ"}
-                </button>
+                {pendingInviteIds.has(fav._id) ? (
+                  <span className="shrink-0 ml-2 px-3 py-1.5 rounded-full bg-orange-50 text-orange-500 border border-orange-200 text-xs font-bold">
+                    รอการตอบรับ
+                  </span>
+                ) : (
+                  <button
+                    onClick={() => handleAddFavorite(fav._id)}
+                    disabled={addingId === fav._id || team.member_ids.length >= team.max_members}
+                    className="px-3 py-1.5 rounded-full bg-[#1b3168] text-white text-xs font-bold hover:bg-[#12224f] transition-colors disabled:opacity-50 shrink-0 ml-2"
+                  >
+                    {addingId === fav._id ? "…" : "เชิญ"}
+                  </button>
+                )}
               </div>
             ))}
           </div>

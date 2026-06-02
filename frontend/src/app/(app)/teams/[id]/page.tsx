@@ -14,7 +14,7 @@ interface ApiTeamDetail {
   leader_id: string;
   leader: ApiUser;
   members: ApiUser[];
-  status: "WAITING" | "IN_PROGRESS";
+  status: "WAITING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
   start_date: string;
   end_date: string;
   required_roles: string[];
@@ -102,8 +102,16 @@ export default function TeamDetailPage({ params }: { params: { id: string } }) {
               <p className="text-blue-400 text-sm font-semibold mt-1">{fmt(team.start_date)} – {fmt(team.end_date)}</p>
             </div>
           </div>
-          <span className={`px-5 py-2 rounded-full text-sm font-bold shadow-sm ${team.status === "IN_PROGRESS" ? "bg-[#ffefc2] text-[#d49900]" : "bg-orange-100 text-orange-600"}`}>
-            {team.status === "IN_PROGRESS" ? "กำลังดำเนินการ" : "รอเริ่ม"}
+          <span className={`px-5 py-2 rounded-full text-sm font-bold shadow-sm ${
+            team.status === "IN_PROGRESS" ? "bg-[#ffefc2] text-[#d49900]" :
+            team.status === "COMPLETED"   ? "bg-green-100 text-green-600" :
+            team.status === "CANCELLED"   ? "bg-gray-100 text-gray-500" :
+            "bg-orange-100 text-orange-600"
+          }`}>
+            {team.status === "IN_PROGRESS" ? "กำลังดำเนินการ" :
+             team.status === "COMPLETED"   ? "จบแล้ว" :
+             team.status === "CANCELLED"   ? "ยกเลิกแล้ว" :
+             "รอเริ่ม"}
           </span>
         </div>
 

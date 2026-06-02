@@ -6,8 +6,9 @@ from bson import ObjectId
 from fastapi import HTTPException, UploadFile
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.models.user import AddCompetitionRequest, CompetitionExperience, FavoriteToggleResponse, UpdateProfileRequest, UserPublicResponse
+from app.models.user import AddCompetitionRequest, CompetitionExperience, CompetitionExperienceResponse, FavoriteToggleResponse, UpdateProfileRequest, UserPublicResponse
 from app.repositories import user as user_repo
+from app.repositories import behavioral_vote as vote_repo
 from app.services.rank import rank_for_count, rank_overall_for_entries, recompute_from_competitions
 
 _ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
@@ -114,12 +115,58 @@ async def update_profile(
     return UserPublicResponse.from_document(doc)
 
 
+async def _build_competition_responses(
+    db: AsyncIOMotorDatabase,
+    user_oid: ObjectId,
+    experiences: list[dict],
+) -> list[CompetitionExperienceResponse]:
+    results = []
+    for exp in experiences:
+        team_id = exp.get("team_id")
+        if exp.get("type") == "team" and team_id and ObjectId.is_valid(team_id):
+            vote_count = await vote_repo.count_votes_received_in_team(
+                db, user_oid, ObjectId(team_id)
+            )
+            contributor_count = len(exp.get("contributor_ids", []))
+            reviewed = contributor_count == 0 or vote_count >= contributor_count
+        else:
+            reviewed = True
+        results.append(CompetitionExperienceResponse(
+            id=exp["id"],
+            competition_name=exp["competition_name"],
+            detail=exp.get("detail", ""),
+            roles=exp.get("roles", []),
+            skills=exp.get("skills", []),
+            contributor_ids=exp.get("contributor_ids", []),
+            type=exp.get("type", "team"),
+            team_id=team_id,
+            date=exp.get("date"),
+            github_url=exp.get("github_url"),
+            reviewed=reviewed,
+        ))
+    return results
+
+
+async def get_competitions(
+    db: AsyncIOMotorDatabase,
+    user_id: str,
+) -> list[CompetitionExperienceResponse]:
+    if not ObjectId.is_valid(user_id):
+        raise HTTPException(status_code=401, detail="Invalid token payload")
+    oid = ObjectId(user_id)
+    doc = await user_repo.get_by_id(db, oid)
+    if not doc:
+        raise HTTPException(status_code=404, detail="User not found")
+    experiences = doc.get("competition_experiences", [])
+    return await _build_competition_responses(db, oid, experiences)
+
+
 async def add_competition(
     db: AsyncIOMotorDatabase,
     redis: aioredis.Redis,
     user_id: str,
     payload: AddCompetitionRequest,
-) -> UserPublicResponse:
+) -> list[CompetitionExperienceResponse]:
     if not ObjectId.is_valid(user_id):
         raise HTTPException(status_code=401, detail="Invalid token payload")
     oid = ObjectId(user_id)
@@ -128,7 +175,8 @@ async def add_competition(
     if not doc:
         raise HTTPException(status_code=404, detail="User not found")
     await recompute_from_competitions(db, redis, oid)
-    return UserPublicResponse.from_document(await user_repo.get_by_id(db, oid))
+    updated = await user_repo.get_by_id(db, oid)
+    return await _build_competition_responses(db, oid, updated.get("competition_experiences", []))
 
 
 async def update_competition(
@@ -137,7 +185,7 @@ async def update_competition(
     user_id: str,
     comp_id: str,
     payload: AddCompetitionRequest,
-) -> UserPublicResponse:
+) -> list[CompetitionExperienceResponse]:
     if not ObjectId.is_valid(user_id):
         raise HTTPException(status_code=401, detail="Invalid token payload")
     oid = ObjectId(user_id)
@@ -146,7 +194,8 @@ async def update_competition(
     if not doc:
         raise HTTPException(status_code=404, detail="Competition entry not found")
     await recompute_from_competitions(db, redis, oid)
-    return UserPublicResponse.from_document(await user_repo.get_by_id(db, oid))
+    updated = await user_repo.get_by_id(db, oid)
+    return await _build_competition_responses(db, oid, updated.get("competition_experiences", []))
 
 
 async def remove_competition(
@@ -154,7 +203,7 @@ async def remove_competition(
     redis: aioredis.Redis,
     user_id: str,
     comp_id: str,
-) -> UserPublicResponse:
+) -> list[CompetitionExperienceResponse]:
     if not ObjectId.is_valid(user_id):
         raise HTTPException(status_code=401, detail="Invalid token payload")
     oid = ObjectId(user_id)
@@ -162,7 +211,8 @@ async def remove_competition(
     if not doc:
         raise HTTPException(status_code=404, detail="User not found")
     await recompute_from_competitions(db, redis, oid)
-    return UserPublicResponse.from_document(await user_repo.get_by_id(db, oid))
+    updated = await user_repo.get_by_id(db, oid)
+    return await _build_competition_responses(db, oid, updated.get("competition_experiences", []))
 
 
 async def toggle_favorite(
