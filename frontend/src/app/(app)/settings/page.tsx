@@ -19,12 +19,57 @@ function Toggle({ initialState = false }: { initialState?: boolean }) {
   );
 }
 
+type OtpStep = "idle" | "sending" | "awaiting" | "verifying" | "done";
+
 export default function SettingsPage() {
   const router = useRouter();
   const [user, setUser] = useState<ApiUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  // Email OTP state — wired up once Resend is configured
+  const [otpStep, setOtpStep] = useState<OtpStep>("idle");
+  const [otpCode, setOtpCode] = useState("");
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState(0);
+
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [countdown]);
+
+  async function handleSendOtp() {
+    setOtpError(null);
+    setOtpStep("sending");
+    try {
+      await apiFetch("/api/v1/users/me/email/send-otp", { method: "POST" });
+      setOtpStep("awaiting");
+      setCountdown(60);
+    } catch (err: unknown) {
+      setOtpError(err instanceof Error ? err.message : "ส่งรหัสไม่สำเร็จ กรุณาลองใหม่");
+      setOtpStep("idle");
+    }
+  }
+
+  async function handleVerifyOtp() {
+    if (otpCode.length !== 6) return;
+    setOtpStep("verifying");
+    setOtpError(null);
+    try {
+      const updated = await apiFetch<ApiUser>("/api/v1/users/me/email/verify-otp", {
+        method: "POST",
+        body: JSON.stringify({ code: otpCode }),
+      });
+      setUser(updated);
+      setOtpStep("done");
+      setOtpCode("");
+    } catch (err: unknown) {
+      setOtpError(err instanceof Error ? err.message : "รหัสไม่ถูกต้อง กรุณาลองใหม่");
+      setOtpStep("awaiting");
+    }
+  }
 
   async function handleDeleteAccount() {
     setDeleting(true);
@@ -112,6 +157,80 @@ export default function SettingsPage() {
                 )
               )}
             </div>
+          </div>
+        </div>
+
+        <hr className="my-8 border-gray-100 dark:border-slate-700" />
+
+        {/* ── Section: ยืนยันอีเมล ── */}
+        <div className="flex flex-col gap-6">
+          <div className="flex items-center gap-2 text-[#1b3168] dark:text-blue-300">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <h2 className="font-bold text-lg">ยืนยันอีเมล</h2>
+          </div>
+
+          <div className="flex flex-col gap-4 pl-2 sm:pl-8">
+            {/* Already verified */}
+            {(otpStep !== "done" && user?.email_verified) || otpStep === "done" ? (
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-bold text-[#1b3168]">{user?.email}</span>
+                <span className="flex items-center gap-1 text-xs font-bold text-green-600 bg-green-50 px-2.5 py-1 rounded-full border border-green-200">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                  {otpStep === "done" ? "ยืนยันสำเร็จ" : "ยืนยันแล้ว"}
+                </span>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-gray-600">{user?.email}</span>
+                  <button
+                    onClick={handleSendOtp}
+                    disabled={otpStep === "sending" || otpStep === "awaiting"}
+                    className="shrink-0 px-5 py-2.5 rounded-xl bg-[#1b3168] text-white text-sm font-bold hover:bg-[#12224f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {otpStep === "sending" ? (
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : "ส่งรหัสยืนยัน"}
+                  </button>
+                </div>
+
+                {(otpStep === "awaiting" || otpStep === "verifying") && (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-xs text-gray-400">ส่งรหัส 6 หลักไปที่ {user?.email} แล้ว</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={6}
+                        value={otpCode}
+                        onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                        placeholder="รหัส 6 หลัก"
+                        className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-[#1b3168] text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1b3168]/30 focus:border-[#1b3168] tracking-widest"
+                      />
+                      <button
+                        onClick={handleVerifyOtp}
+                        disabled={otpCode.length !== 6 || otpStep === "verifying"}
+                        className="shrink-0 px-5 py-3 rounded-xl bg-green-600 text-white text-sm font-bold hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {otpStep === "verifying" ? (
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : "ยืนยัน"}
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      {countdown > 0
+                        ? `ส่งรหัสใหม่ได้ใน ${countdown}s`
+                        : <button onClick={handleSendOtp} className="text-[#1b3168] font-bold hover:underline">ส่งรหัสใหม่</button>
+                      }
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {otpError && <p className="text-xs font-semibold text-red-500">{otpError}</p>}
           </div>
         </div>
 

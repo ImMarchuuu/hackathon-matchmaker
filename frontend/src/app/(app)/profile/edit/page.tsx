@@ -46,6 +46,7 @@ export default function EditProfilePage() {
     github: "",
     linkedin: "",
     roles: [],
+    display_roles: [],
   });
 
   useEffect(() => {

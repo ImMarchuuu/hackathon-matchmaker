@@ -75,6 +75,7 @@ class UserDocument(BaseModel):
     github: Optional[str] = None
     linkedin: Optional[str] = None
     mbti: Optional[str] = None
+    email_verified: bool = False
     behavioral_rates: float = Field(default=0.0, ge=0.0, le=5.0)
     rank_overall: RankTitle = "Bronze"
     role: list[RoleEntry] = []
@@ -193,6 +194,7 @@ class UserPublicResponse(BaseModel):
     github: Optional[str] = None
     linkedin: Optional[str] = None
     mbti: Optional[str] = None
+    email_verified: bool = False
     behavioral_rates: float
     rank_overall: RankTitle
     role: list[RoleEntry]

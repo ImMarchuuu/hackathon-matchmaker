@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Noto_Sans_Thai } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
@@ -12,6 +12,11 @@ const notoST = Noto_Sans_Thai({
 export const metadata: Metadata = {
   title: "Grand Line — Find Your Team",
   description: "Connect builders, designers, and innovators. Find your perfect hackathon team.",
+  manifest: "/manifest.json",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#1b3168",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

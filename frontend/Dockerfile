@@ -13,9 +13,10 @@ ENV NODE_ENV=development NEXT_TELEMETRY_DISABLED=1
 CMD ["npm", "run", "dev"]
 
 FROM base AS builder
+ARG BACKEND_INTERNAL_URL=http://hackathon_backend:8000
+ENV BACKEND_INTERNAL_URL=${BACKEND_INTERNAL_URL} NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 FROM base AS production
