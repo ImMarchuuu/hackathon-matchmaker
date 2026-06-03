@@ -7,7 +7,10 @@ import MyRoleSection from "@/components/profile/MyRoleSection";
 import SkillRankSection from "@/components/profile/SkillRankSection";
 import CompetitionSection from "@/components/profile/CompetitionSection";
 import ActiveTeamSection from "@/components/profile/ActiveTeamSection";
+import ProfilePendingActionCard from "@/components/profile/ProfilePendingActionCard";
+import JoinRequestModal from "@/components/team/JoinRequestModal";
 import { apiFetch } from "@/lib/api";
+import type { ApiInvite } from "@/types/team";
 import type { ApiUser, ApiCompetitionExperience } from "@/types/profile";
 import type { ApiTeam } from "@/types/team";
 import type { ApiRankSummary } from "@/types/skill";
@@ -35,6 +38,17 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
   const [rankSummary, setRankSummary] = useState<ApiRankSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [missing, setMissing] = useState(false);
+
+  // pending join-request (leader sees on requester's profile)
+  const [pendingJoinRequest, setPendingJoinRequest] = useState<{
+    teamId: string; teamName: string; requestId: string; roles: string[]; skills: string[];
+  } | null>(null);
+  // pending invite (invitee sees on leader's profile)
+  const [pendingInvite, setPendingInvite] = useState<{
+    teamId: string; teamName: string; requiredRoles: string[]; requiredSkills: string[];
+  } | null>(null);
+  const [showAcceptModal, setShowAcceptModal] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   function fmt(d: string) {
     return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -73,8 +87,53 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
               }));
             mapped.sort((a, b) => a.daysLeft - b.daysLeft);
             setTeams(mapped);
+
+            // Detect pending invite: profile is leader, me is in invites[] with status pending
+            if (currentUser) {
+              const inviteTeam = apiTeams.find(
+                (t) =>
+                  t.leader_id === profile._id &&
+                  t.member_ids.length < t.max_members &&
+                  (t.invites ?? []).some(
+                    (i: ApiInvite) => i.user_id === currentUser._id && i.status === "pending"
+                  )
+              );
+              if (inviteTeam) {
+                setPendingInvite({
+                  teamId: inviteTeam._id,
+                  teamName: inviteTeam.title,
+                  requiredRoles: inviteTeam.required_roles ?? [],
+                  requiredSkills: inviteTeam.required_skills ?? [],
+                });
+              }
+            }
           })
           .catch(() => {});
+
+        // Detect pending join-request: me is leader, profile user sent a pending request, team not full
+        if (currentUser) {
+          apiFetch<ApiTeam[]>(`/api/v1/users/${currentUser._id}/teams`)
+            .then((myTeams) => {
+              for (const t of myTeams) {
+                if (t.leader_id !== currentUser._id) continue;
+                if (t.member_ids.length >= t.max_members) continue;
+                const req = t.join_requests.find(
+                  (r) => r.user_id === profile._id && r.status === "pending"
+                );
+                if (req) {
+                  setPendingJoinRequest({
+                    teamId: t._id,
+                    teamName: t.title,
+                    requestId: req.id,
+                    roles: req.roles ?? [],
+                    skills: req.skills ?? [],
+                  });
+                  break;
+                }
+              }
+            })
+            .catch(() => {});
+        }
 
         apiFetch<ApiRankSummary>(`/api/v1/users/${profile._id}/rank-summary`)
           .then(setRankSummary)
@@ -87,6 +146,46 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
       .catch(() => setMissing(true))
       .finally(() => setLoading(false));
   }, [username]);
+
+  async function handleJoinRequestAction(action: "approved" | "rejected") {
+    if (!pendingJoinRequest) return;
+    setActionLoading(true);
+    try {
+      await apiFetch(`/api/v1/teams/${pendingJoinRequest.teamId}/requests/${pendingJoinRequest.requestId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: action }),
+      });
+      setPendingJoinRequest(null);
+    } catch { /* silently fail */ } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleInviteDecline() {
+    if (!pendingInvite) return;
+    setActionLoading(true);
+    try {
+      await apiFetch(`/api/v1/teams/${pendingInvite.teamId}/invites/decline`, { method: "POST" });
+      setPendingInvite(null);
+    } catch { /* silently fail */ } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleInviteAccept(roles: string[], skills: string[]) {
+    if (!pendingInvite) return;
+    setActionLoading(true);
+    try {
+      await apiFetch(`/api/v1/teams/${pendingInvite.teamId}/invites/accept`, {
+        method: "POST",
+        body: JSON.stringify({ roles, skills }),
+      });
+      setPendingInvite(null);
+      setShowAcceptModal(false);
+    } catch { /* silently fail */ } finally {
+      setActionLoading(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -193,6 +292,41 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
               </p>
             </div>
           </section>
+
+          {/* Pending action cards — visible only to the relevant party */}
+          {!isCurrentUser && pendingJoinRequest && (
+            <ProfilePendingActionCard
+              type="join_request"
+              teamName={pendingJoinRequest.teamName}
+              roles={pendingJoinRequest.roles}
+              skills={pendingJoinRequest.skills}
+              loading={actionLoading}
+              onAccept={() => handleJoinRequestAction("approved")}
+              onDecline={() => handleJoinRequestAction("rejected")}
+            />
+          )}
+          {!isCurrentUser && pendingInvite && (
+            <ProfilePendingActionCard
+              type="team_invite"
+              teamName={pendingInvite.teamName}
+              inviteRoles={pendingInvite.requiredRoles}
+              loading={actionLoading}
+              onAccept={() => setShowAcceptModal(true)}
+              onDecline={handleInviteDecline}
+            />
+          )}
+          {showAcceptModal && pendingInvite && (
+            <JoinRequestModal
+              teamTitle={pendingInvite.teamName}
+              availableRoles={pendingInvite.requiredRoles}
+              availableSkills={pendingInvite.requiredSkills}
+              title="ยืนยันการเข้าร่วมทีม"
+              submitLabel="ยืนยันเข้าร่วม"
+              saving={actionLoading}
+              onClose={() => setShowAcceptModal(false)}
+              onSubmit={handleInviteAccept}
+            />
+          )}
 
           {/* Section 4 & 5: Details & Contact */}
           <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-8 px-6 sm:px-12">
