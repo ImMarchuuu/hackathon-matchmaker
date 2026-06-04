@@ -100,7 +100,8 @@ const pwa = withPWA({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: "standalone",
+  // standalone is required for Docker; Vercel handles its own output format
+  ...(process.env.DOCKER_BUILD === "true" ? { output: "standalone" } : {}),
   async rewrites() {
     return [
       {

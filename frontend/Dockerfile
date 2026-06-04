@@ -14,7 +14,7 @@ CMD ["npm", "run", "dev"]
 
 FROM base AS builder
 ARG BACKEND_INTERNAL_URL=http://hackathon_backend:8000
-ENV BACKEND_INTERNAL_URL=${BACKEND_INTERNAL_URL} NEXT_TELEMETRY_DISABLED=1
+ENV BACKEND_INTERNAL_URL=${BACKEND_INTERNAL_URL} DOCKER_BUILD=true NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
