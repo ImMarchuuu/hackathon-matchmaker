@@ -122,6 +122,7 @@ async def _upsert_oauth_user(
         "github": None,
         "linkedin": None,
         "mbti": None,
+        "onboarding_completed": False,
         "behavioral_rates": 0.0,
         "rank_overall": "Bronze",
         "role": [],

@@ -48,7 +48,7 @@ function buildTeamViewModel(
 
   return {
     id: team._id,
-    avatarUrl: leader?.avatar_url ?? "/avatar.png",
+    avatarUrl: leader?.avatar_url ?? "/profile.svg",
     title: team.title,
     authorName: leader?.name ?? "Unknown",
     dateRange: `${fmt(team.start_date)} - ${fmt(team.end_date)}`,
@@ -60,11 +60,11 @@ function buildTeamViewModel(
     positions: (team.positions ?? []).map((p) => ({ role: p.role, filled: p.filled })),
     currentMemberCount: team.member_ids.length,
     maxMembers: team.max_members,
-    memberAvatars: members.map((u) => u.avatar_url ?? "/avatar.png"),
+    memberAvatars: members.map((u) => u.avatar_url ?? "/profile.svg"),
     description: team.description,
     detailedMembers: members.map((u) => ({
       name: u.name,
-      avatar: u.avatar_url ?? "/avatar.png",
+      avatar: u.avatar_url ?? "/profile.svg",
       role: u.role[0]?.name ?? "Member",
       score: u.behavioral_rates,
     })),
@@ -79,7 +79,7 @@ function buildPeopleViewModel(user: ApiUser, favoriteIds: Set<string>): PeopleCa
     username: user.username,
     name: user.name,
     bio: user.bio ?? "",
-    avatarUrl: user.avatar_url ?? "/avatar.png",
+    avatarUrl: user.avatar_url ?? "/profile.svg",
     roleTags: user.role.map((r) => r.name),
     skillTags: user.skills.map((s) => s.name),
     isFavorited: favoriteIds.has(user._id),

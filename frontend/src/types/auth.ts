@@ -19,3 +19,17 @@ export interface AuthResponse {
     avatarUrl?: string;
   };
 }
+
+/** Subset of the `/users/me` response needed by onboarding. */
+export interface MeResponse {
+  id: string;
+  username: string;
+  name: string;
+  email: string;
+  avatar_url?: string | null;
+  cover_image?: string | null;
+  bio?: string | null;
+  github?: string | null;
+  linkedin?: string | null;
+  onboarding_completed: boolean;
+}

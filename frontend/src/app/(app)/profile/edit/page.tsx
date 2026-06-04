@@ -158,7 +158,7 @@ export default function EditProfilePage() {
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={coverUrl ?? "/cover-bg.png"}
+              src={coverUrl ?? "/Bg.svg"}
               alt="Cover"
               className="w-full h-full object-cover object-center"
             />
@@ -178,7 +178,7 @@ export default function EditProfilePage() {
             <div className="w-28 h-28 rounded-full border-4 border-white overflow-hidden bg-white shadow-sm relative">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={avatarUrl ?? "/avatar.png"}
+                src={avatarUrl ?? "/profile.svg"}
                 alt="Avatar"
                 className="w-full h-full object-cover"
               />

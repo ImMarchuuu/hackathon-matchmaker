@@ -22,7 +22,7 @@ function buildCardData(team: ApiTeam, userMap: Record<string, ApiUser>, myId: st
 
   return {
     id: team._id,
-    avatarUrl: leader?.avatar_url ?? "/avatar.png",
+    avatarUrl: leader?.avatar_url ?? "/profile.svg",
     title: team.title,
     authorName: leader?.name ?? "Unknown",
     dateRange: `${fmt(team.start_date)} - ${fmt(team.end_date)}`,
@@ -32,12 +32,12 @@ function buildCardData(team: ApiTeam, userMap: Record<string, ApiUser>, myId: st
     skills: team.required_skills,
     currentMembers: team.member_ids.length,
     maxMembers: team.max_members,
-    memberAvatars: members.map((u) => u.avatar_url ?? "/avatar.png"),
+    memberAvatars: members.map((u) => u.avatar_url ?? "/profile.svg"),
     description: team.description,
     isLeader: team.leader_id === myId,
     detailedMembers: members.map((u) => ({
       name: u.name,
-      avatar: u.avatar_url ?? "/avatar.png",
+      avatar: u.avatar_url ?? "/profile.svg",
       role: u.role[0]?.name ?? "Member",
       score: u.behavioral_rates,
     })),

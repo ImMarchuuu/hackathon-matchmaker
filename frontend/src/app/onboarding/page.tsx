@@ -1,15 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import "./onboarding.css";
 import FindTeamView from "./FindTeamView";
+import { apiFetch, apiUpload } from "@/lib/api";
+import type { MeResponse } from "@/types/auth";
 
 /* ═══════════════════════════════════════════════════
    Constants
    ═══════════════════════════════════════════════════ */
-const USER_NAME = "กิตติ";
 const TOTAL_STEPS = 2; // Steps 2 & 3 are the dot-navigation steps
+const DEFAULT_AVATAR = "/profile.svg";
+const DEFAULT_COVER = "/Bg.svg";
+const ACCEPTED_IMAGES = "image/png,image/jpeg,image/webp,image/gif";
 
 /* ═══════════════════════════════════════════════════
    Reusable: Anchor Icon
@@ -74,12 +78,13 @@ function StepHeader({
 /* ═══════════════════════════════════════════════════
    Reusable: Bottom CTA Button
    ═══════════════════════════════════════════════════ */
-function BottomCTA({ label, onClick }: { label: string; onClick: () => void }) {
+function BottomCTA({ label, onClick, disabled = false }: { label: string; onClick: () => void; disabled?: boolean }) {
   return (
     <div className="mt-auto pt-8 sm:pt-12 w-full flex justify-center">
       <button
         onClick={onClick}
-        className="w-full max-w-md py-4 rounded-full bg-[#1b3168] text-white font-bold text-base hover:bg-[#12234b] active:scale-[0.98] transition-all shadow-lg flex items-center justify-center gap-2"
+        disabled={disabled}
+        className="w-full max-w-md py-4 rounded-full bg-[#1b3168] text-white font-bold text-base hover:bg-[#12234b] active:scale-[0.98] transition-all shadow-lg flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {label}
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
@@ -93,7 +98,7 @@ function BottomCTA({ label, onClick }: { label: string; onClick: () => void }) {
 /* ═══════════════════════════════════════════════════
    Step 1 — Welcome (Full blue gradient screen)
    ═══════════════════════════════════════════════════ */
-function WelcomeStep({ onNext }: { onNext: () => void }) {
+function WelcomeStep({ userName, onNext }: { userName: string; onNext: () => void }) {
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center px-6 py-12 text-center"
@@ -119,9 +124,11 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
           <h1 className="text-3xl sm:text-4xl font-extrabold text-white leading-tight">
             สวัสดี
           </h1>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-white leading-tight flex items-center gap-2">
-            คุณ {USER_NAME}
-          </h1>
+          {userName && (
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-white leading-tight flex items-center gap-2">
+              คุณ {userName}
+            </h1>
+          )}
         </div>
 
         {/* Subtitle */}
@@ -154,16 +161,43 @@ function ProfileStep({
   onNext,
   onBack,
   onSkip,
+  avatarPreview,
+  coverPreview,
+  onAvatarSelect,
+  onCoverSelect,
 }: {
   onNext: () => void;
   onBack: () => void;
   onSkip: () => void;
+  avatarPreview: string | null;
+  coverPreview: string | null;
+  onAvatarSelect: (file: File) => void;
+  onCoverSelect: (file: File) => void;
 }) {
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
   return (
     <div className="min-h-screen bg-white flex flex-col">
       <div className="w-full max-w-2xl mx-auto px-5 sm:px-8 pt-6 pb-8 flex flex-col flex-1">
         {/* Navigation Header */}
         <StepHeader currentStep={1} totalSteps={TOTAL_STEPS} onBack={onBack} onSkip={onSkip} />
+
+        {/* Hidden file inputs */}
+        <input
+          ref={avatarInputRef}
+          type="file"
+          accept={ACCEPTED_IMAGES}
+          className="hidden"
+          onChange={(e) => e.target.files?.[0] && onAvatarSelect(e.target.files[0])}
+        />
+        <input
+          ref={coverInputRef}
+          type="file"
+          accept={ACCEPTED_IMAGES}
+          className="hidden"
+          onChange={(e) => e.target.files?.[0] && onCoverSelect(e.target.files[0])}
+        />
 
         <div className="ob-slide-up flex flex-col flex-1">
           {/* Title */}
@@ -181,16 +215,16 @@ function ProfileStep({
           <div className="relative mb-16">
             {/* Cover */}
             <div
-              className="w-full aspect-[16/7] sm:aspect-[16/6] rounded-2xl overflow-hidden relative cursor-pointer group"
-              style={{ background: "linear-gradient(135deg, #1b3168 0%, #2c52ed 40%, #5ba3f5 70%, #a8d4ff 100%)" }}
+              onClick={() => coverInputRef.current?.click()}
+              className="w-full aspect-[16/7] sm:aspect-[16/6] rounded-2xl overflow-hidden relative cursor-pointer group bg-center bg-cover"
+              style={{ backgroundImage: `url(${coverPreview ?? DEFAULT_COVER})` }}
             >
-              {/* Decorative circles */}
-              <div className="absolute top-4 right-12 w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-white/10" />
-              <div className="absolute -bottom-6 right-4 w-20 h-20 sm:w-32 sm:h-32 rounded-full bg-white/5" />
-              <div className="absolute top-1/2 left-1/3 w-10 h-10 sm:w-16 sm:h-16 rounded-full bg-white/5" />
-
               {/* Upload cover button */}
-              <button className="absolute top-3 right-3 sm:top-4 sm:right-4 flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-black/30 hover:bg-black/40 backdrop-blur-sm text-white text-xs sm:text-sm font-semibold rounded-lg transition-colors">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); coverInputRef.current?.click(); }}
+                className="absolute top-3 right-3 sm:top-4 sm:right-4 flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2 bg-black/30 hover:bg-black/40 backdrop-blur-sm text-white text-xs sm:text-sm font-semibold rounded-lg transition-colors"
+              >
                 <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0z" />
@@ -201,9 +235,15 @@ function ProfileStep({
 
             {/* Profile Avatar — overlapping the cover */}
             <div className="absolute -bottom-10 left-6 sm:left-8">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-white bg-[#1b3168] shadow-lg flex items-center justify-center cursor-pointer group relative">
-                {/* Thai letter placeholder */}
-                <span className="text-white text-2xl sm:text-3xl font-bold select-none">ก</span>
+              <div
+                onClick={() => avatarInputRef.current?.click()}
+                className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border-4 border-white bg-white shadow-lg overflow-hidden cursor-pointer group relative"
+              >
+                <img
+                  src={avatarPreview ?? DEFAULT_AVATAR}
+                  alt="รูปโปรไฟล์"
+                  className="w-full h-full object-cover select-none"
+                />
                 {/* Camera badge */}
                 <div className="absolute -bottom-0.5 -right-0.5 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#1b3168] border-2 border-white flex items-center justify-center">
                   <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
@@ -224,16 +264,30 @@ function ProfileStep({
 }
 
 /* ═══════════════════════════════════════════════════
-   Step 3 — About You (Bio, GitHub, LinkedIn, Website)
+   Step 3 — About You (Bio, GitHub, LinkedIn)
    ═══════════════════════════════════════════════════ */
 function AboutStep({
   onNext,
   onBack,
   onSkip,
+  saving,
+  bio,
+  github,
+  linkedin,
+  setBio,
+  setGithub,
+  setLinkedin,
 }: {
   onNext: () => void;
   onBack: () => void;
   onSkip: () => void;
+  saving: boolean;
+  bio: string;
+  github: string;
+  linkedin: string;
+  setBio: (v: string) => void;
+  setGithub: (v: string) => void;
+  setLinkedin: (v: string) => void;
 }) {
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -259,6 +313,8 @@ function AboutStep({
               <label className="block text-sm font-bold text-[#1b3168] mb-2">แนะนำตัวสั้นๆ</label>
               <textarea
                 rows={4}
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
                 placeholder="เช่น เป็น Frontend dev อยากหาทีมแข่ง Hackathon สาย AI..."
                 className="w-full px-4 py-3.5 rounded-xl border border-gray-200 text-sm text-gray-700 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1b3168]/20 focus:border-[#1b3168] resize-none transition-all bg-gray-50/50"
               />
@@ -269,6 +325,8 @@ function AboutStep({
               <label className="block text-sm font-bold text-[#1b3168] mb-2">GitHub</label>
               <input
                 type="text"
+                value={github}
+                onChange={(e) => setGithub(e.target.value)}
                 placeholder="github.com/ username"
                 className="w-full px-4 py-3.5 rounded-xl border border-gray-200 text-sm text-gray-700 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1b3168]/20 focus:border-[#1b3168] transition-all bg-gray-50/50"
               />
@@ -279,24 +337,16 @@ function AboutStep({
               <label className="block text-sm font-bold text-[#1b3168] mb-2">LinkedIn</label>
               <input
                 type="text"
+                value={linkedin}
+                onChange={(e) => setLinkedin(e.target.value)}
                 placeholder="linkedin.com/in/ your-name"
-                className="w-full px-4 py-3.5 rounded-xl border border-gray-200 text-sm text-gray-700 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1b3168]/20 focus:border-[#1b3168] transition-all bg-gray-50/50"
-              />
-            </div>
-
-            {/* Website / Portfolio */}
-            <div>
-              <label className="block text-sm font-bold text-[#1b3168] mb-2">ลิงก์อื่นๆ</label>
-              <input
-                type="url"
-                placeholder="https://your-website.com"
                 className="w-full px-4 py-3.5 rounded-xl border border-gray-200 text-sm text-gray-700 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-[#1b3168]/20 focus:border-[#1b3168] transition-all bg-gray-50/50"
               />
             </div>
           </div>
 
           {/* Bottom CTA */}
-          <BottomCTA label="ถัดไป" onClick={onNext} />
+          <BottomCTA label={saving ? "กำลังบันทึก…" : "บันทึกและไปต่อ"} onClick={onNext} disabled={saving} />
         </div>
       </div>
     </div>
@@ -306,7 +356,7 @@ function AboutStep({
 /* ═══════════════════════════════════════════════════
    Step 4 — Completion (Full blue gradient screen)
    ═══════════════════════════════════════════════════ */
-function CompleteStep({ onFinish }: { onFinish: () => void }) {
+function CompleteStep({ userName, onFinish }: { userName: string; onFinish: () => void }) {
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center px-6 py-12 text-center"
@@ -329,7 +379,7 @@ function CompleteStep({ onFinish }: { onFinish: () => void }) {
             เสร็จสิ้น!
           </h1>
           <p className="text-white/80 text-sm leading-relaxed max-w-xs mt-1">
-            โปรไฟล์ของคุณ {USER_NAME} พร้อมแล้ว
+            โปรไฟล์ของคุณ {userName} พร้อมแล้ว
             <br />ได้เวลาหาทีมในฝันแล้ว!
           </p>
         </div>
@@ -355,38 +405,140 @@ function CompleteStep({ onFinish }: { onFinish: () => void }) {
    Main Orchestrator
    ═══════════════════════════════════════════════════ */
 export default function OnboardingPage() {
-  const [step, setStep] = useState(1);
   const router = useRouter();
+  const [step, setStep] = useState(1);
+  const [loadingUser, setLoadingUser] = useState(true);
 
+  // ── Profile form state (hydrated from /users/me) ──────────────────────────
+  const [userName, setUserName] = useState("");
+  const [bio, setBio] = useState("");
+  const [github, setGithub] = useState("");
+  const [linkedin, setLinkedin] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  // ── Load the real user; skip onboarding entirely if already completed ─────
+  useEffect(() => {
+    let active = true;
+    apiFetch<MeResponse>("/api/v1/users/me")
+      .then((me) => {
+        if (!active) return;
+        if (me.onboarding_completed) {
+          router.replace("/find-team");
+          return;
+        }
+        setUserName(me.name || "");
+        setBio(me.bio ?? "");
+        setGithub(me.github ?? "");
+        setLinkedin(me.linkedin ?? "");
+        if (me.avatar_url) setAvatarPreview(me.avatar_url);
+        if (me.cover_image) setCoverPreview(me.cover_image);
+        setLoadingUser(false);
+      })
+      .catch(() => {
+        if (active) router.replace("/login");
+      });
+    return () => {
+      active = false;
+    };
+  }, [router]);
+
+  const handleAvatarSelect = (file: File) => {
+    setAvatarFile(file);
+    setAvatarPreview(URL.createObjectURL(file));
+  };
+
+  const handleCoverSelect = (file: File) => {
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
+  };
+
+  // Persist everything to the backend and mark onboarding as done.
+  const persistProfile = async () => {
+    if (avatarFile) await apiUpload("/api/v1/users/me/avatar", avatarFile);
+    if (coverFile) await apiUpload("/api/v1/users/me/cover", coverFile);
+
+    const payload: Record<string, unknown> = { onboarding_completed: true };
+    if (bio.trim()) payload.bio = bio.trim();
+    if (github.trim()) payload.github = github.trim();
+    if (linkedin.trim()) payload.linkedin = linkedin.trim();
+
+    await apiFetch("/api/v1/users/me", {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+  };
+
+  // Save (from "บันทึกและไปต่อ" or "ข้าม") then show the completion screen.
+  const handleSaveAndComplete = async () => {
+    if (saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      await persistProfile();
+      setStep(4);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "บันทึกไม่สำเร็จ ลองอีกครั้ง");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Completion screen → show the mock Find Team view + coachmark tour,
+  // which navigates to the real /find-team page once the tour finishes.
   const handleFinish = () => {
-    document.cookie = "grandline_auth=u1; path=/;";
     setStep(5);
   };
 
-  const handleSkip = () => {
-    // Skip goes straight to completion
-    setStep(4);
-  };
+  if (loadingUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="w-10 h-10 border-4 border-[#1b3168]/20 border-t-[#1b3168] rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <>
-      {step === 1 && <WelcomeStep onNext={() => setStep(2)} />}
+      {step === 1 && <WelcomeStep userName={userName} onNext={() => setStep(2)} />}
       {step === 2 && (
         <ProfileStep
           onNext={() => setStep(3)}
           onBack={() => setStep(1)}
-          onSkip={handleSkip}
+          onSkip={handleSaveAndComplete}
+          avatarPreview={avatarPreview}
+          coverPreview={coverPreview}
+          onAvatarSelect={handleAvatarSelect}
+          onCoverSelect={handleCoverSelect}
         />
       )}
       {step === 3 && (
         <AboutStep
-          onNext={() => setStep(4)}
+          onNext={handleSaveAndComplete}
           onBack={() => setStep(2)}
-          onSkip={handleSkip}
+          onSkip={handleSaveAndComplete}
+          saving={saving}
+          bio={bio}
+          github={github}
+          linkedin={linkedin}
+          setBio={setBio}
+          setGithub={setGithub}
+          setLinkedin={setLinkedin}
         />
       )}
-      {step === 4 && <CompleteStep onFinish={handleFinish} />}
+      {step === 4 && <CompleteStep userName={userName} onFinish={handleFinish} />}
       {step === 5 && <FindTeamView />}
+
+      {error && (
+        <div className="fixed bottom-4 inset-x-0 flex justify-center px-4 z-50">
+          <p className="bg-red-500 text-white text-sm px-4 py-2 rounded-full shadow-lg">{error}</p>
+        </div>
+      )}
     </>
   );
 }

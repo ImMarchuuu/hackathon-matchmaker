@@ -172,7 +172,7 @@ export default function TeamCard({ data, onRequest, onCancel }: TeamCardProps) {
         <div className="flex gap-4">
           <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 border border-gray-100 bg-gray-50">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={data.avatarUrl || "https://i.pravatar.cc/150"} alt={data.authorName} className="w-full h-full object-cover" />
+            <img src={data.avatarUrl || "/profile.svg"} alt={data.authorName} className="w-full h-full object-cover" />
           </div>
           <div className="flex flex-col justify-center">
             <h3 className="font-extrabold text-[#1b3168] text-lg leading-tight">{data.title}</h3>

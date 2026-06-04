@@ -147,7 +147,7 @@ export default function ActiveTeamCard({ data }: { data: ActiveTeamCardData }) {
             <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 border border-gray-100 bg-gray-50">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={data.avatarUrl || "https://i.pravatar.cc/150"}
+                src={data.avatarUrl || "/profile.svg"}
                 alt={data.authorName}
                 className="w-full h-full object-cover"
               />
