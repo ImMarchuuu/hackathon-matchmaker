@@ -21,6 +21,8 @@ export interface TeamCardData {
   status?: "WAITING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
   roles: string[];
   skills: string[];
+  filledSkills?: string[];
+  positions?: { role: string; filled: boolean }[];
   currentMembers: number;
   maxMembers: number;
   memberAvatars: string[];
@@ -48,7 +50,7 @@ const abbreviateRole = (role: string) => {
   return map[role] || role;
 };
 
-function DynamicTagList({ tags, textColorClass }: { tags: string[], textColorClass: string }) {
+function DynamicTagList({ tags, filledSet, textColorClass }: { tags: string[], filledSet?: Set<string>, textColorClass: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [visibleCount, setVisibleCount] = useState(tags.length);
 
@@ -67,8 +69,8 @@ function DynamicTagList({ tags, textColorClass }: { tags: string[], textColorCla
       let lines = 1;
       let count = 0;
       const gap = 8;
-      const moreWidth = 45; // Approx width of the "+N" badge
-      
+      const moreWidth = 45;
+
       for (let i = 0; i < tagElements.length; i++) {
         const childWidth = tagElements[i].offsetWidth;
         const isLast = (i === tagElements.length - 1);
@@ -88,7 +90,7 @@ function DynamicTagList({ tags, textColorClass }: { tags: string[], textColorCla
 
         count++;
       }
-      
+
       setVisibleCount(count === 0 ? 1 : count);
     });
 
@@ -99,15 +101,20 @@ function DynamicTagList({ tags, textColorClass }: { tags: string[], textColorCla
   return (
     <div ref={containerRef} className="flex flex-wrap gap-2 w-full content-start relative min-h-[60px] overflow-hidden">
       {tags.map((tag, idx) => {
+        const isFilled = filledSet?.has(tag) ?? false;
         const isVisible = idx < visibleCount;
         return (
-          <span 
-            key={idx} 
+          <span
+            key={idx}
             data-tag="true"
-            className={`bg-white border border-gray-100 shadow-sm ${textColorClass} text-[11px] font-semibold px-3 py-1 rounded-full items-center justify-center whitespace-nowrap
+            className={`border text-[11px] font-semibold px-3 py-1 rounded-full items-center gap-1 justify-center whitespace-nowrap
+              ${isFilled
+                ? 'bg-gray-50 border-gray-200 text-gray-400'
+                : `bg-white border-gray-100 shadow-sm ${textColorClass}`}
               ${isVisible ? 'flex' : 'absolute opacity-0 pointer-events-none -z-10'}
             `}
           >
+            {isFilled && <span className="text-[9px] leading-none">✓</span>}
             {tag}
           </span>
         );
@@ -132,6 +139,23 @@ const STATUS_CONFIG = {
 export default function TeamCard({ data, onRequest, onCancel }: TeamCardProps) {
   const isUrgent = data.daysLeft <= 1;
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Derive which role tags are fully filled (no open slot remaining)
+  const allPositions = data.positions ?? [];
+  const openRolesSet = new Set(allPositions.filter(p => !p.filled).map(p => p.role));
+  const hasPositionSet = new Set(allPositions.map(p => p.role));
+  const filledRolesAbbrevSet = new Set(
+    data.roles
+      .filter(r => hasPositionSet.has(r) && !openRolesSet.has(r))
+      .map(abbreviateRole)
+  );
+  const openRoleCount = allPositions.length === 0 ? data.roles.length : allPositions.filter(p => !p.filled).length;
+  const filledRoleCount = allPositions.filter(p => p.filled).length;
+
+  // Derive which skill tags are covered by current members
+  const filledSkillsSet = new Set(data.filledSkills ?? []);
+  const openSkillCount = data.skills.filter(s => !filledSkillsSet.has(s)).length;
+  const filledSkillCount = filledSkillsSet.size;
 
   const isExpired = data.daysLeft === 0 &&
     (data.status === "WAITING" || data.status === "IN_PROGRESS");
@@ -179,17 +203,30 @@ export default function TeamCard({ data, onRequest, onCancel }: TeamCardProps) {
           <div className="flex items-center gap-1.5">
             <RoleIcon className="w-4 h-4 text-[#1b3168]" />
             <span className="text-[#1b3168] font-bold text-xs">Role Tag</span>
+            {allPositions.length > 0 && (
+              <span className="text-gray-400 text-[10px] font-medium ml-auto leading-none">
+                {openRoleCount > 0 && <span className="text-[#1b3168]">{openRoleCount} open</span>}
+                {openRoleCount > 0 && filledRoleCount > 0 && <span> · </span>}
+                {filledRoleCount > 0 && <span>{filledRoleCount} filled</span>}
+              </span>
+            )}
           </div>
           {isExpanded ? (
             <div className="flex flex-wrap content-start gap-2 min-h-[60px]">
-              {data.roles.map((role, idx) => (
-                <span key={idx} className="bg-white border border-gray-100 shadow-sm text-[#1b3168] text-[11px] font-semibold px-3 py-1 rounded-full flex items-center justify-center whitespace-nowrap">
-                  {abbreviateRole(role)}
-                </span>
-              ))}
+              {data.roles.map((role, idx) => {
+                const abbrev = abbreviateRole(role);
+                const isFilled = filledRolesAbbrevSet.has(abbrev);
+                return (
+                  <span key={idx} className={`border text-[11px] font-semibold px-3 py-1 rounded-full flex items-center gap-1 justify-center whitespace-nowrap
+                    ${isFilled ? 'bg-gray-50 border-gray-200 text-gray-400' : 'bg-white border-gray-100 shadow-sm text-[#1b3168]'}`}>
+                    {isFilled && <span className="text-[9px] leading-none">✓</span>}
+                    {abbrev}
+                  </span>
+                );
+              })}
             </div>
           ) : (
-            <DynamicTagList tags={data.roles.map(abbreviateRole)} textColorClass="text-[#1b3168]" />
+            <DynamicTagList tags={data.roles.map(abbreviateRole)} filledSet={filledRolesAbbrevSet} textColorClass="text-[#1b3168]" />
           )}
         </div>
 
@@ -198,17 +235,29 @@ export default function TeamCard({ data, onRequest, onCancel }: TeamCardProps) {
           <div className="flex items-center gap-1.5">
             <SkillIcon className="w-4 h-4 text-[#1b3168]" />
             <span className="text-[#1b3168] font-bold text-xs">Skill Tag</span>
+            {data.skills.length > 0 && (filledSkillCount > 0 || openSkillCount > 0) && (
+              <span className="text-gray-400 text-[10px] font-medium ml-auto leading-none">
+                {openSkillCount > 0 && <span className="text-[#1b3168]">{openSkillCount} open</span>}
+                {openSkillCount > 0 && filledSkillCount > 0 && <span> · </span>}
+                {filledSkillCount > 0 && <span>{filledSkillCount} filled</span>}
+              </span>
+            )}
           </div>
           {isExpanded ? (
             <div className="flex flex-wrap content-start gap-2 min-h-[60px]">
-              {data.skills.map((skill, idx) => (
-                <span key={idx} className="bg-white border border-gray-100 shadow-sm text-[#1b3168] text-[11px] font-semibold px-3 py-1 rounded-full flex items-center justify-center whitespace-nowrap">
-                  {skill}
-                </span>
-              ))}
+              {data.skills.map((skill, idx) => {
+                const isFilled = filledSkillsSet.has(skill);
+                return (
+                  <span key={idx} className={`border text-[11px] font-semibold px-3 py-1 rounded-full flex items-center gap-1 justify-center whitespace-nowrap
+                    ${isFilled ? 'bg-gray-50 border-gray-200 text-gray-400' : 'bg-white border-gray-100 shadow-sm text-[#1b3168]'}`}>
+                    {isFilled && <span className="text-[9px] leading-none">✓</span>}
+                    {skill}
+                  </span>
+                );
+              })}
             </div>
           ) : (
-            <DynamicTagList tags={data.skills} textColorClass="text-[#1b3168]" />
+            <DynamicTagList tags={data.skills} filledSet={filledSkillsSet} textColorClass="text-[#1b3168]" />
           )}
         </div>
       </div>

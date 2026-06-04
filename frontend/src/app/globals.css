@@ -6,6 +6,8 @@
 
 
 :root {
+  --font-noto-sans-thai: 'Noto Sans Thai', sans-serif;
+
   /* ตัวแปรสีหลักสำหรับ Tailwind */
   --primary: 12 36 100;
   --secondary: 81 107 177;

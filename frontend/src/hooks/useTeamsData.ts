@@ -41,6 +41,11 @@ function buildTeamViewModel(
     }
   }
 
+  const memberSkills = new Set(
+    members.flatMap((u) => u.skills.map((s) => s.name))
+  );
+  const filledSkills = team.required_skills.filter((s) => memberSkills.has(s));
+
   return {
     id: team._id,
     avatarUrl: leader?.avatar_url ?? "/avatar.png",
@@ -51,6 +56,8 @@ function buildTeamViewModel(
     status: team.status,
     roles: team.required_roles,
     skills: team.required_skills,
+    filledSkills,
+    positions: (team.positions ?? []).map((p) => ({ role: p.role, filled: p.filled })),
     currentMemberCount: team.member_ids.length,
     maxMembers: team.max_members,
     memberAvatars: members.map((u) => u.avatar_url ?? "/avatar.png"),
