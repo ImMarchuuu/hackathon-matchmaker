@@ -168,6 +168,7 @@ export default function FindTeamPage() {
                       status: team.status,
                       roles: team.roles,
                       skills: team.skills,
+                      filledRoles: team.filledRoles,
                       filledSkills: team.filledSkills,
                       positions: team.positions,
                       currentMembers: team.currentMemberCount,

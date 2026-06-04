@@ -21,6 +21,7 @@ export interface TeamCardData {
   status?: "WAITING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
   roles: string[];
   skills: string[];
+  filledRoles?: string[];
   filledSkills?: string[];
   positions?: { role: string; filled: boolean }[];
   currentMembers: number;
@@ -140,17 +141,12 @@ export default function TeamCard({ data, onRequest, onCancel }: TeamCardProps) {
   const isUrgent = data.daysLeft <= 1;
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Derive which role tags are fully filled (no open slot remaining)
+  // Derive filled/open role counts from member data (filledRoles) and slot data (positions)
+  const filledRolesSet = new Set(data.filledRoles ?? []);
+  const filledRolesAbbrevSet = new Set(Array.from(filledRolesSet).map(abbreviateRole));
+  const filledRoleCount = data.roles.filter(r => filledRolesSet.has(r)).length;
+  const openRoleCount = data.roles.length - filledRoleCount;
   const allPositions = data.positions ?? [];
-  const openRolesSet = new Set(allPositions.filter(p => !p.filled).map(p => p.role));
-  const hasPositionSet = new Set(allPositions.map(p => p.role));
-  const filledRolesAbbrevSet = new Set(
-    data.roles
-      .filter(r => hasPositionSet.has(r) && !openRolesSet.has(r))
-      .map(abbreviateRole)
-  );
-  const openRoleCount = allPositions.length === 0 ? data.roles.length : allPositions.filter(p => !p.filled).length;
-  const filledRoleCount = allPositions.filter(p => p.filled).length;
 
   // Derive which skill tags are covered by current members
   const filledSkillsSet = new Set(data.filledSkills ?? []);
@@ -203,7 +199,7 @@ export default function TeamCard({ data, onRequest, onCancel }: TeamCardProps) {
           <div className="flex items-center gap-1.5">
             <RoleIcon className="w-4 h-4 text-[#1b3168]" />
             <span className="text-[#1b3168] font-bold text-xs">Role Tag</span>
-            {allPositions.length > 0 && (
+            {data.roles.length > 0 && (
               <span className="text-gray-400 text-[10px] font-medium ml-auto leading-none">
                 {openRoleCount > 0 && <span className="text-[#1b3168]">{openRoleCount} open</span>}
                 {openRoleCount > 0 && filledRoleCount > 0 && <span> · </span>}
