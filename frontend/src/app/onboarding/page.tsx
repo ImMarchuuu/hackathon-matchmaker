@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import "./onboarding.css";
 import FindTeamView from "./FindTeamView";
 import { apiFetch, apiUpload } from "@/lib/api";
+import { isOnboardingDone, setOnboardingDone } from "@/lib/onboarding";
 import type { MeResponse } from "@/types/auth";
 
 /* ═══════════════════════════════════════════════════
@@ -12,7 +13,6 @@ import type { MeResponse } from "@/types/auth";
    ═══════════════════════════════════════════════════ */
 const TOTAL_STEPS = 2; // Steps 2 & 3 are the dot-navigation steps
 const DEFAULT_AVATAR = "/profile.svg";
-const DEFAULT_COVER = "/Bg.svg";
 const ACCEPTED_IMAGES = "image/png,image/jpeg,image/webp,image/gif";
 
 /* ═══════════════════════════════════════════════════
@@ -116,7 +116,7 @@ function WelcomeStep({ userName, onNext }: { userName: string; onNext: () => voi
         {/* Logo area */}
         <div className="flex flex-col items-center gap-1">
           <p className="text-white/70 text-sm font-medium">ยินดีต้อนรับสู่</p>
-          <img src="/Logo.svg" alt="Grand Line" className="h-10 w-auto object-contain invert select-none" />
+          <img src="/Logo.svg" alt="Grand Line" className="h-10 w-auto object-contain select-none" />
         </div>
 
         {/* Greeting */}
@@ -216,9 +216,15 @@ function ProfileStep({
             {/* Cover */}
             <div
               onClick={() => coverInputRef.current?.click()}
-              className="w-full aspect-[16/7] sm:aspect-[16/6] rounded-2xl overflow-hidden relative cursor-pointer group bg-center bg-cover"
-              style={{ backgroundImage: `url(${coverPreview ?? DEFAULT_COVER})` }}
+              className="w-full aspect-[16/7] sm:aspect-[16/6] rounded-2xl overflow-hidden relative cursor-pointer group bg-[#1b3168]"
             >
+              {coverPreview && (
+                <img
+                  src={coverPreview}
+                  alt="รูปปก"
+                  className="absolute inset-0 w-full h-full object-cover object-center select-none"
+                />
+              )}
               {/* Upload cover button */}
               <button
                 type="button"
@@ -360,7 +366,7 @@ function CompleteStep({ userName, onFinish }: { userName: string; onFinish: () =
   return (
     <div
       className="min-h-screen flex flex-col items-center justify-center px-6 py-12 text-center"
-      style={{ background: "linear-gradient(180deg, #0F5EC1 0%, #2B8FE0 50%, #3BA3F0 100%)" }}
+      style={{ background: "linear-gradient(180deg, #022DA0 0%, #0F5EC1 40%, #26B1F8 100%)" }}
     >
       <div className="ob-fade-in flex flex-col items-center gap-6 w-full max-w-sm">
         {/* Checkmark Circle */}
@@ -422,16 +428,21 @@ export default function OnboardingPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // ── Load the real user; skip onboarding entirely if already completed ─────
+  // ── Gate on the localStorage flag; load the real user for name/prefill ────
   useEffect(() => {
     let active = true;
+
+    // Already finished onboarding on this browser → skip straight to find-team.
+    if (isOnboardingDone()) {
+      router.replace("/find-team");
+      return;
+    }
+    // Mark onboarding as started (not yet completed).
+    setOnboardingDone(false);
+
     apiFetch<MeResponse>("/api/v1/users/me")
       .then((me) => {
         if (!active) return;
-        if (me.onboarding_completed) {
-          router.replace("/find-team");
-          return;
-        }
         setUserName(me.name || "");
         setBio(me.bio ?? "");
         setGithub(me.github ?? "");

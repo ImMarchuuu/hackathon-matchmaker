@@ -64,6 +64,7 @@ export default function CreateTeamPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (saving) return; // guard against rapid double-submits
     setError(null);
 
     if (!eventStartDate) {
@@ -98,7 +99,9 @@ export default function CreateTeamPage() {
         }),
       });
 
-      // If user has favorites → show invite step, else go straight to active-teams
+      // If user has favorites → show invite step, else go straight to active-teams.
+      // Keep `saving` true so the button stays spinning until the view changes —
+      // this prevents creating duplicate teams from extra clicks while we transition.
       if (favorites.length > 0) {
         setCreatedTeamId(created._id);
       } else {
@@ -106,8 +109,7 @@ export default function CreateTeamPage() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "เกิดข้อผิดพลาด กรุณาลองอีกครั้ง");
-    } finally {
-      setSaving(false);
+      setSaving(false); // re-enable only on failure so the user can retry
     }
   };
 

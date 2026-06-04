@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
+import { PROFILE_UPDATED_EVENT } from "@/lib/profile-events";
 import type { ApiUser } from "@/types/profile";
 import type { ApiTeam } from "@/types/team";
 
@@ -28,6 +29,14 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
         setUserMap(Object.fromEntries(apiUsers.map((u) => [u._id, u])));
       })
       .catch(() => {});
+  }, []);
+
+  // Refresh the current user (avatar/name) when the profile is edited.
+  useEffect(() => {
+    const reloadUser = () =>
+      apiFetch<ApiUser>("/api/v1/users/me").then(setUser).catch(() => {});
+    window.addEventListener(PROFILE_UPDATED_EVENT, reloadUser);
+    return () => window.removeEventListener(PROFILE_UPDATED_EVENT, reloadUser);
   }, []);
 
   const visibleTeams = teams.slice(0, 3);
@@ -90,7 +99,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
         <Link href="/profile" onClick={onClose} className="px-6 py-4 flex items-center gap-4 hover:bg-gray-50 transition-colors">
           <div className="w-16 h-16 rounded-full overflow-hidden border border-gray-200 shadow-sm shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={user?.avatar_url ?? "/avatar.png"} alt="Profile" className="w-full h-full object-cover" />
+            <img src={user?.avatar_url ?? "/profile.svg"} alt="Profile" className="w-full h-full object-cover" />
           </div>
           <div>
             <h2 className="text-[#233876] font-black text-lg">
@@ -133,7 +142,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
                     <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-[#1b3168] shrink-0 group-hover:border-[#2c52ed] transition-colors">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
-                        src={leader?.avatar_url ?? "/avatar.png"}
+                        src={leader?.avatar_url ?? "/profile.svg"}
                         alt={team.title}
                         className="w-full h-full object-cover"
                       />

@@ -154,7 +154,8 @@ export function useTeamsData(params: {
           roles.length <= 1 || roles.some((r) => t.required_roles.includes(r))
         );
         const rawPeople = (usersResult.items as ApiUser[]).filter((u: ApiUser) =>
-          roles.length <= 1 || roles.some((r) => u.role.some((ur) => ur.name === r))
+          u._id !== meId &&
+          (roles.length <= 1 || roles.some((r) => u.role.some((ur) => ur.name === r)))
         );
 
         setTeams(rawTeams.map((t: ApiTeam) => buildTeamViewModel(t, userMap, meId)));
@@ -162,7 +163,8 @@ export function useTeamsData(params: {
         setHasNextTeams(teamsResult.has_next);
         setHasNextPeople(usersResult.has_next);
         setTotalTeams(teamsResult.total);
-        setTotalPeople(usersResult.total);
+        // Exclude self from the count so it matches the filtered list
+        setTotalPeople(meId ? Math.max(0, usersResult.total - 1) : usersResult.total);
       } catch {
         // silent — keep previous results visible
       } finally {
