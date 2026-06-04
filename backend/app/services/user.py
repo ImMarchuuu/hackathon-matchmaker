@@ -34,16 +34,31 @@ async def list_users(
     *,
     role: str | None = None,
     skill: str | None = None,
-) -> list[UserPublicResponse]:
-    docs = await user_repo.get_all(db, role=role, skill=skill)
-    return [UserPublicResponse.from_document(d) for d in docs]
+    q: str | None = None,
+    page: int = 1,
+    limit: int = 20,
+) -> dict:
+    from app.models.user import PaginatedResponse
+    docs, total = await user_repo.get_all(db, role=role, skill=skill, q=q, page=page, limit=limit)
+    items = [UserPublicResponse.from_document(d) for d in docs]
+    return PaginatedResponse(
+        items=[i.model_dump(by_alias=True) for i in items],
+        total=total,
+        page=page,
+        limit=limit,
+        has_next=(page * limit) < total,
+    ).model_dump()
 
 
 async def get_user_profile(
     db: AsyncIOMotorDatabase,
     username: str,
 ) -> UserPublicResponse:
-    doc = await user_repo.get_by_username(db, username)
+    # Accept either a username or a MongoDB ObjectId string
+    if ObjectId.is_valid(username):
+        doc = await user_repo.get_by_id(db, ObjectId(username))
+    else:
+        doc = await user_repo.get_by_username(db, username)
     if not doc:
         raise HTTPException(status_code=404, detail=f"User '{username}' not found")
     return UserPublicResponse.from_document(doc)

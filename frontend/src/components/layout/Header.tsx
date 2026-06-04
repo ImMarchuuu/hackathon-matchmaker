@@ -196,13 +196,13 @@ function NotificationPopup({ onUnreadCount }: { onUnreadCount: (n: number) => vo
             return (
               <div key={notif.id} className={base}>
                 <div className="flex gap-3 items-start">
-                  <Link href={p.requester_id ? `/profile/${p.requester_id}` : "#"} className="shrink-0">
+                  <Link href={p.requester_id ? `/profile/${p.requester_username || p.requester_id}` : "#"} className="shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={p.requester_avatar ?? "/avatar.png"} alt="" className="w-10 h-10 rounded-full object-cover border border-blue-100 hover:opacity-80 transition-opacity" />
                   </Link>
                   <div className="flex flex-col min-w-0">
                     <p className="text-sm text-gray-700 leading-relaxed">
-                      <Link href={p.requester_id ? `/profile/${p.requester_id}` : "#"} className="font-bold text-[#1b3168] hover:underline">{p.requester_name}</Link>
+                      <Link href={p.requester_id ? `/profile/${p.requester_username || p.requester_id}` : "#"} className="font-bold text-[#1b3168] hover:underline">{p.requester_name}</Link>
                       {" "}ขอเข้าร่วมทีม{" "}
                       <Link href={p.team_id ? `/teams/${p.team_id}` : "#"} className="font-bold text-[#1b3168] hover:underline">{p.team_name}</Link>
                     </p>

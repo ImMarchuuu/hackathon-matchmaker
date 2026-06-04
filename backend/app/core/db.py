@@ -30,6 +30,39 @@ async def _init_mongo() -> None:
     await _mongo_client.admin.command("ping")
     _mongo_db = _mongo_client[settings.mongo_db]
     logger.info("✅  MongoDB connected — db: %s", settings.mongo_db)
+    await _ensure_indexes(_mongo_db)
+
+
+async def _ensure_indexes(db: AsyncIOMotorDatabase) -> None:
+    """Create all indexes idempotently. Silently skips if an equivalent index already exists."""
+    from pymongo import TEXT
+    from pymongo.errors import OperationFailure
+
+    async def try_create(collection: str, keys, **kwargs) -> None:
+        try:
+            await db[collection].create_index(keys, **kwargs)
+        except OperationFailure as e:
+            if e.code in (85, 86):  # IndexOptionsConflict / IndexKeySpecsConflict
+                logger.debug("Index already exists on %s — skipping (%s)", collection, e.details.get("errmsg", ""))
+            else:
+                raise
+
+    # ── teams ─────────────────────────────────────────────────────────────────
+    await try_create("teams", [("title", TEXT), ("description", TEXT), ("required_skills", TEXT)],
+                     default_language="none")
+    await try_create("teams", "required_roles")
+    await try_create("teams", "status")
+    await try_create("teams", "start_date")
+    await try_create("teams", "created_at")
+
+    # ── users ─────────────────────────────────────────────────────────────────
+    await try_create("users", [("name", TEXT), ("username", TEXT), ("bio", TEXT), ("skills.name", TEXT)],
+                     default_language="none")
+    await try_create("users", "role.name")
+    await try_create("users", "skills.name")
+    await try_create("users", [("username", 1)], unique=True, sparse=True)
+
+    logger.info("✅  MongoDB indexes ensured")
 
 
 async def _init_redis() -> None:

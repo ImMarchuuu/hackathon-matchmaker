@@ -400,7 +400,6 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
           <div className="w-full pt-8 border-t border-gray-100">
             <CompetitionSection
               competitions={competitions}
-              allUsers={allUsers}
               isCurrentUser={isCurrentUser}
               onUpdated={handleCompetitionUpdated}
             />

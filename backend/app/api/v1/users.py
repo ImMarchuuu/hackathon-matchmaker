@@ -147,14 +147,18 @@ async def get_my_favorites(
     return await user_service.get_favorites(db, current_user_id)
 
 
-@router.get("", response_model=list[UserPublicResponse], summary="List users")
+@router.get("", summary="List / search users (paginated)")
 async def list_users(
     role: Optional[RoleName] = None,
     skill: Optional[str] = None,
+    q: Optional[str] = None,
+    page: int = 1,
+    limit: int = 20,
     db: AsyncIOMotorDatabase = Depends(db_dependency),
-) -> list[UserPublicResponse]:
-    """Return all users, optionally filtered by role or skill name."""
-    return await user_service.list_users(db, role=role, skill=skill)
+) -> dict:
+    """Return paginated users. Pass `q` for full-text search across name, username, bio and skills."""
+    limit = min(limit, 100)
+    return await user_service.list_users(db, role=role, skill=skill, q=q, page=page, limit=limit)
 
 
 @router.get("/{user_id}/teams", response_model=list[TeamResponse], summary="Get teams a user is a member of")

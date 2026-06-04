@@ -7,25 +7,35 @@ async def get_all(
     *,
     status: str | None = None,
     role: str | None = None,
-) -> list[dict]:
+    q: str | None = None,
+    page: int = 1,
+    limit: int = 20,
+) -> tuple[list[dict], int]:
     from datetime import date as _date
     today = _date.today().isoformat()
 
     query: dict = {
-        # Only show active teams in the discovery feed
         "status": {"$in": ["WAITING", "IN_PROGRESS"]},
-        # Exclude teams whose event has already started (can't join) or ended
         "start_date": {"$gte": today},
-        "end_date": {"$gte": today},
-        # Hide full teams: members < max_members
+        "end_date":   {"$gte": today},
         "$expr": {"$lt": [{"$size": "$member_ids"}, "$max_members"]},
     }
     if status:
-        query["status"] = status  # explicit filter overrides the default
+        query["status"] = status
     if role:
         query["required_roles"] = role
-    cursor = db["teams"].find(query).sort("created_at", -1)
-    return await cursor.to_list(length=None)
+    if q:
+        query["$text"] = {"$search": q}
+
+    total = await db["teams"].count_documents(query)
+    skip = (page - 1) * limit
+
+    sort = [("score", {"$meta": "textScore"})] if q else [("created_at", -1)]
+    projection = {"score": {"$meta": "textScore"}} if q else {}
+
+    cursor = db["teams"].find(query, projection).sort(sort).skip(skip).limit(limit)
+    items = await cursor.to_list(length=limit)
+    return items, total
 
 
 async def get_by_id(db: AsyncIOMotorDatabase, team_id: ObjectId) -> dict | None:

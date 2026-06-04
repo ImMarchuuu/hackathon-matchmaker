@@ -75,9 +75,20 @@ async def list_teams(
     *,
     status: str | None = None,
     role: str | None = None,
-) -> list[TeamResponse]:
-    docs = await team_repo.get_all(db, status=status, role=role)
-    return [TeamResponse.from_document(d) for d in docs]
+    q: str | None = None,
+    page: int = 1,
+    limit: int = 20,
+) -> dict:
+    from app.models.user import PaginatedResponse
+    docs, total = await team_repo.get_all(db, status=status, role=role, q=q, page=page, limit=limit)
+    items = [TeamResponse.from_document(d) for d in docs]
+    return PaginatedResponse(
+        items=[i.model_dump(by_alias=True) for i in items],
+        total=total,
+        page=page,
+        limit=limit,
+        has_next=(page * limit) < total,
+    ).model_dump()
 
 
 async def get_team_detail(
@@ -152,6 +163,7 @@ async def send_join_request(
         "team_id": team_id,
         "team_name": doc["title"],
         "requester_id": user_id,
+        "requester_username": requester.get("username", "") if requester else "",
         "requester_name": requester.get("name", "") if requester else "",
         "requester_avatar": requester.get("avatar_url") if requester else None,
         "request_id": request["id"],

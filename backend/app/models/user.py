@@ -150,6 +150,15 @@ class RoleRankEntry(BaseModel):
     rank_title: str
 
 
+class PaginatedResponse(BaseModel):
+    """Generic paginated wrapper used by list endpoints."""
+    items: list
+    total: int
+    page: int
+    limit: int
+    has_next: bool
+
+
 class RankSummaryResponse(BaseModel):
     """Aggregated rank data for the skill-bank and profile pages."""
     rank_overall: str
