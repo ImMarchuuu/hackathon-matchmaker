@@ -43,8 +43,8 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
   const remainingCount = Math.max(0, teams.length - 3);
 
   const rankOverall = user?.rank_overall ?? "Bronze";
-  const roleCount   = user?.role.length ?? 0;
-  const skillCount  = user?.skills.length ?? 0;
+  const roleCount   = user?.role?.length ?? 0;
+  const skillCount  = user?.skills?.length ?? 0;
 
   async function handleLogout() {
     try {

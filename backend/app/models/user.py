@@ -207,11 +207,13 @@ class UserPublicResponse(BaseModel):
     mbti: Optional[str] = None
     email_verified: bool = False
     onboarding_completed: bool = False
-    behavioral_rates: float
-    rank_overall: RankTitle
-    role: list[RoleEntry]
-    skills: list[SkillEntry]
-    portfolios: list[PortfolioEntry]
+    behavioral_rates: float = 0.0
+    rank_overall: RankTitle = "Bronze"
+    # Default to empty lists so legacy/partial documents missing these fields
+    # don't fail validation (which would 500 /me and crash the client).
+    role: list[RoleEntry] = []
+    skills: list[SkillEntry] = []
+    portfolios: list[PortfolioEntry] = []
     display_roles: list[str] = []
 
     @classmethod
