@@ -13,7 +13,7 @@ function ProfilePopup({ onClose, user }: { onClose: () => void; user: ApiUser | 
       <div className="flex flex-col items-center gap-1">
         <div className="w-20 h-20 rounded-full border-4 border-white shadow-sm overflow-hidden bg-gray-50 shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={user?.avatar_url ?? "/avatar.png"} alt={user?.name ?? "Profile"} className="w-full h-full object-cover" />
+          <img src={user?.avatar_url ?? "/profile.svg"} alt={user?.name ?? "Profile"} className="w-full h-full object-cover" />
         </div>
         <div className="text-center mt-2">
           <h4 className="text-[#1b3168] dark:text-blue-300 font-black text-xl leading-none">{user?.name ?? "—"}</h4>
@@ -198,7 +198,7 @@ function NotificationPopup({ onUnreadCount }: { onUnreadCount: (n: number) => vo
                 <div className="flex gap-3 items-start">
                   <Link href={p.requester_id ? `/profile/${p.requester_username || p.requester_id}` : "#"} className="shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.requester_avatar ?? "/avatar.png"} alt="" className="w-10 h-10 rounded-full object-cover border border-blue-100 hover:opacity-80 transition-opacity" />
+                    <img src={p.requester_avatar ?? "/profile.svg"} alt="" className="w-10 h-10 rounded-full object-cover border border-blue-100 hover:opacity-80 transition-opacity" />
                   </Link>
                   <div className="flex flex-col min-w-0">
                     <p className="text-sm text-gray-700 leading-relaxed">
@@ -428,7 +428,7 @@ function NotificationPopup({ onUnreadCount }: { onUnreadCount: (n: number) => vo
                 <div className="flex gap-3 items-start">
                   <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-200 shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.user_avatar ?? "/avatar.png"} alt="" className="w-full h-full object-cover" />
+                    <img src={p.user_avatar ?? "/profile.svg"} alt="" className="w-full h-full object-cover" />
                   </div>
                   <div className="flex flex-col gap-1 min-w-0">
                     <p className="text-sm text-gray-700 leading-relaxed">
@@ -562,7 +562,7 @@ export default function Header({ onMenuToggle }: { onMenuToggle?: () => void }) 
           aria-label="Go to profile"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={currentUser?.avatar_url ?? "/avatar.png"} alt="Profile" className="w-full h-full object-cover" />
+          <img src={currentUser?.avatar_url ?? "/profile.svg"} alt="Profile" className="w-full h-full object-cover" />
         </Link>
 
         {/* ── Desktop Avatar (Dropdown Popup) ── */}
@@ -574,7 +574,7 @@ export default function Header({ onMenuToggle }: { onMenuToggle?: () => void }) 
             aria-expanded={isProfileOpen}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={currentUser?.avatar_url ?? "/avatar.png"} alt="Profile" className="w-full h-full object-cover" />
+            <img src={currentUser?.avatar_url ?? "/profile.svg"} alt="Profile" className="w-full h-full object-cover" />
           </button>
           
           {/* Profile Dropdown Popup */}

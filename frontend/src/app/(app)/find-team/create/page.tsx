@@ -153,7 +153,7 @@ export default function CreateTeamPage() {
               <div key={fav._id} className="flex items-center justify-between gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50">
                 <Link href={`/profile/${fav.username}`} className="flex items-center gap-3 min-w-0 group">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={fav.avatar_url ?? "/avatar.png"} alt={fav.name} className="w-10 h-10 rounded-full object-cover border border-gray-200 shrink-0" />
+                  <img src={fav.avatar_url ?? "/profile.svg"} alt={fav.name} className="w-10 h-10 rounded-full object-cover border border-gray-200 shrink-0" />
                   <div className="min-w-0">
                     <p className="text-[#1b3168] font-bold text-sm truncate group-hover:underline">{fav.name}</p>
                     <p className="text-gray-400 text-xs">{fav.role[0]?.name ?? ""}</p>

@@ -76,6 +76,7 @@ class UserDocument(BaseModel):
     linkedin: Optional[str] = None
     mbti: Optional[str] = None
     email_verified: bool = False
+    onboarding_completed: bool = False
     behavioral_rates: float = Field(default=0.0, ge=0.0, le=5.0)
     rank_overall: RankTitle = "Bronze"
     role: list[RoleEntry] = []
@@ -105,6 +106,7 @@ class UpdateProfileRequest(BaseModel):
     linkedin: Optional[str] = None
     roles: Optional[list[RoleName]] = None
     display_roles: Optional[list[str]] = None
+    onboarding_completed: Optional[bool] = None
 
 
 class UpdateSkillsRequest(BaseModel):
@@ -204,6 +206,7 @@ class UserPublicResponse(BaseModel):
     linkedin: Optional[str] = None
     mbti: Optional[str] = None
     email_verified: bool = False
+    onboarding_completed: bool = False
     behavioral_rates: float
     rank_overall: RankTitle
     role: list[RoleEntry]

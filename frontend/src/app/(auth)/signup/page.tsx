@@ -36,7 +36,7 @@ export default function SignupPage() {
         body: JSON.stringify(payload),
       });
       document.cookie = `grandline_auth=${res.token}; path=/; max-age=604800; SameSite=Lax`;
-      router.push("/find-team");
+      router.push("/onboarding");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
