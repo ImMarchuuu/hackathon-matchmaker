@@ -20,6 +20,7 @@ export default function FindTeamPage() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [page, setPage] = useState(1);
+  const LIMIT = 20;
 
   const { teams, setTeams, people, isLoading, hasNextTeams, hasNextPeople, totalTeams, totalPeople } =
     useTeamsData({ q: searchQuery, roles: activeFilters, page });
@@ -65,6 +66,14 @@ export default function FindTeamPage() {
       // ignore
     }
   }
+
+  const totalTeamPages = Math.max(1, Math.ceil(totalTeams / LIMIT));
+  const totalPeoplePages = Math.max(1, Math.ceil(totalPeople / LIMIT));
+
+  const handleTabChange = (tab: ActiveTab) => {
+    setActiveTab(tab);
+    setPage(1);
+  };
 
   // Reset to page 1 when search query changes
   const handleSearchChange = (value: string) => {
@@ -127,7 +136,7 @@ export default function FindTeamPage() {
       <div className="flex justify-center w-full">
         <div className="flex bg-[#EAEAEA] rounded-xl p-1 shrink-0 w-full max-w-[280px]">
           {(["team", "people"] as const).map((tab) => (
-            <button key={tab} onClick={() => setActiveTab(tab)}
+            <button key={tab} onClick={() => handleTabChange(tab)}
               className={`flex-1 py-2.5 rounded-lg text-xs font-black tracking-widest transition-all ${activeTab === tab ? "bg-[#1b3168] text-white shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
               {tab.toUpperCase()}
             </button>
@@ -184,16 +193,25 @@ export default function FindTeamPage() {
                   />
                 ))}
               </div>
-              <div className="flex items-center justify-between text-xs text-gray-400 px-1">
-                <span>แสดง {teams.length} จาก {totalTeams} ทีม</span>
-                {hasNextTeams && (
+              <div className="flex items-center justify-between text-xs text-gray-400 px-1 mt-2">
+                <span>{totalTeams} ทีม</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage((p) => p - 1)}
+                    disabled={page <= 1}
+                    className="px-4 py-2 rounded-full border border-gray-200 text-[#1b3168] font-bold hover:bg-gray-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    ← ก่อนหน้า
+                  </button>
+                  <span className="px-3 font-bold text-[#1b3168]">{page} / {totalTeamPages}</span>
                   <button
                     onClick={() => setPage((p) => p + 1)}
-                    className="px-5 py-2 rounded-full border border-gray-200 text-[#1b3168] font-bold hover:bg-gray-50 transition-colors"
+                    disabled={!hasNextTeams}
+                    className="px-4 py-2 rounded-full border border-gray-200 text-[#1b3168] font-bold hover:bg-gray-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                   >
-                    โหลดเพิ่ม
+                    ถัดไป →
                   </button>
-                )}
+                </div>
               </div>
             </div>
           ) : (
@@ -208,16 +226,25 @@ export default function FindTeamPage() {
                 <PersonCard key={person.id} data={person} />
               ))}
             </div>
-            <div className="flex items-center justify-between text-xs text-gray-400 px-1">
-              <span>แสดง {people.length} จาก {totalPeople} คน</span>
-              {hasNextPeople && (
+            <div className="flex items-center justify-between text-xs text-gray-400 px-1 mt-2">
+              <span>{totalPeople} คน</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage((p) => p - 1)}
+                  disabled={page <= 1}
+                  className="px-4 py-2 rounded-full border border-gray-200 text-[#1b3168] font-bold hover:bg-gray-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  ← ก่อนหน้า
+                </button>
+                <span className="px-3 font-bold text-[#1b3168]">{page} / {totalPeoplePages}</span>
                 <button
                   onClick={() => setPage((p) => p + 1)}
-                  className="px-5 py-2 rounded-full border border-gray-200 text-[#1b3168] font-bold hover:bg-gray-50 transition-colors"
+                  disabled={!hasNextPeople}
+                  className="px-4 py-2 rounded-full border border-gray-200 text-[#1b3168] font-bold hover:bg-gray-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
-                  โหลดเพิ่ม
+                  ถัดไป →
                 </button>
-              )}
+              </div>
             </div>
           </div>
         ) : (

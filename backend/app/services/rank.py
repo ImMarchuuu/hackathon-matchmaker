@@ -13,6 +13,7 @@ project_count with a 1-hour TTL.
 """
 
 import logging
+import math
 from typing import TypedDict
 
 import redis.asyncio as aioredis
@@ -83,6 +84,29 @@ def _compute(project_count: int, thresholds: dict[str, int]) -> RankResult:
     return RankResult(tier=1, rank_title="Bronze")
 
 
+def _overall_rank_from_skills(skill_entries: list[dict]) -> str:
+    """
+    Median-rank algorithm: walk from Diamond down to Bronze and return the
+    highest rank where at least ceil(total/2) skills sit at that rank or above.
+
+    Examples (threshold = ceil(n/2)):
+      2 Bronze + 2 Silver + 2 Gold  → threshold 3 → Silver  (4 skills ≥ Silver)
+      4 Bronze + 1 Silver + 1 Gold  → threshold 3 → Bronze  (only 2 ≥ Silver)
+      1 Bronze + 2 Silver + 3 Gold  → threshold 3 → Gold    (3 skills ≥ Gold)
+    """
+    if not skill_entries:
+        return "Bronze"
+
+    total     = len(skill_entries)
+    threshold = math.ceil(total / 2)
+
+    for tier, rank_title in [(4, "Diamond"), (3, "Gold"), (2, "Silver"), (1, "Bronze")]:
+        if sum(1 for s in skill_entries if s["tier"] >= tier) >= threshold:
+            return rank_title
+
+    return "Bronze"
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 async def rank_for_count(redis: aioredis.Redis, project_count: int) -> RankResult:
@@ -113,20 +137,15 @@ async def rank_overall_for_entries(
     entries: list[dict],
 ) -> str:
     """
-    Given a list of role or skill sub-documents (each with a ``project_count``),
-    return the ``rank_title`` of the highest tier among all entries.
+    Compute overall rank from a list of role/skill sub-documents using the
+    median-rank algorithm.  Each entry must have a ``project_count`` field.
     Falls back to ``"Bronze"`` when the list is empty.
     """
     if not entries:
         return "Bronze"
 
-    best = RankResult(tier=0, rank_title="Bronze")
-    for entry in entries:
-        result = await rank_for_count(redis, entry.get("project_count", 0))
-        if result["tier"] > best["tier"]:
-            best = result
-
-    return best["rank_title"]
+    resolved = [await rank_for_count(redis, e.get("project_count", 0)) for e in entries]
+    return _overall_rank_from_skills(resolved)
 
 
 def _progress_within_tier(
@@ -209,14 +228,8 @@ async def get_rank_summary(
             "rank_title":    rank["rank_title"],
         })
 
-    # ── Overall rank (best skill tier) ──────────────────────────────────────
-    if skill_entries:
-        best_tier = max(s["tier"] for s in skill_entries)
-        rank_overall = next(
-            s["rank_title"] for s in skill_entries if s["tier"] == best_tier
-        )
-    else:
-        rank_overall = "Bronze"
+    # ── Overall rank (median-rank algorithm) ───────────────────────────────
+    rank_overall = _overall_rank_from_skills(skill_entries)
 
     return {
         "rank_overall":    rank_overall,
@@ -289,12 +302,8 @@ async def recompute_from_competitions(
             "rank_title":    rank["rank_title"],
         })
 
-    # ── Overall rank (best skill tier) ───────────────────────────────────────
-    if new_skills:
-        best_tier    = max(s["tier"] for s in new_skills)
-        rank_overall = next(s["rank_title"] for s in new_skills if s["tier"] == best_tier)
-    else:
-        rank_overall = "Bronze"
+    # ── Overall rank (median-rank algorithm) ─────────────────────────────────
+    rank_overall = _overall_rank_from_skills(new_skills)
 
     await db["users"].update_one(
         {"_id": user_id},

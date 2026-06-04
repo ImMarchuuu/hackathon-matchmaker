@@ -22,7 +22,6 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
 
   const [user, setUser] = useState<ApiUser | null>(null);
   const [me, setMe] = useState<ApiUser | null>(null);
-  const [allUsers, setAllUsers] = useState<ApiUser[]>([]);
   const [competitions, setCompetitions] = useState<ApiCompetitionExperience[]>([]);
 
   function handleCompetitionUpdated(updatedList: ApiCompetitionExperience[]) {
@@ -139,9 +138,6 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
           .then(setRankSummary)
           .catch(() => {});
 
-        apiFetch<ApiUser[]>("/api/v1/users")
-          .then(setAllUsers)
-          .catch(() => {});
       })
       .catch(() => setMissing(true))
       .finally(() => setLoading(false));
@@ -262,6 +258,25 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
                 </span>
                 @{user.username}
               </p>
+
+              {/* Behavior Score */}
+              {user.behavioral_rates > 0 && (
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="flex items-center gap-0.5">
+                    {Array.from({ length: 5 }).map((_, i) => {
+                      const filled = user.behavioral_rates >= i + 1;
+                      const half = !filled && user.behavioral_rates >= i + 0.5;
+                      return (
+                        <svg key={i} className={`w-4 h-4 ${filled ? "text-amber-400" : half ? "text-amber-300" : "text-gray-200"}`} fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                        </svg>
+                      );
+                    })}
+                  </div>
+                  <span className="text-sm font-extrabold text-[#233876]">{user.behavioral_rates.toFixed(1)}</span>
+                  <span className="text-xs font-semibold text-gray-400">Behavior Score</span>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-3 pt-1">

@@ -7,8 +7,7 @@ import ProjectCompetitionCard from "@/components/skill-bank/ProjectCompetitionCa
 import TeamCompetitionCard from "@/components/skill-bank/TeamCompetitionCard";
 import AddProjectModal from "@/components/skill-bank/AddProjectModal";
 import type { ApiRankSummary } from "@/types/skill";
-import type { ApiUser } from "@/types/profile";
-import type { ApiCompetitionExperience } from "@/types/profile";
+import type { ApiUser, ApiCompetitionExperience } from "@/types/profile";
 
 type TabFilter = "all" | "projects" | "competitions";
 
@@ -38,6 +37,9 @@ export default function SkillBankPage() {
   const [competitions, setCompetitions] = useState<ApiCompetitionExperience[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddProject, setShowAddProject] = useState(false);
+  const [editingComp, setEditingComp] = useState<ApiCompetitionExperience | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     apiFetch<ApiUser>("/api/v1/users/me")
@@ -66,6 +68,20 @@ export default function SkillBankPage() {
     return <div className="p-8 text-center text-gray-400">ไม่พบข้อมูล</div>;
   }
 
+  async function handleDelete(compId: string) {
+    setDeleting(true);
+    try {
+      const updated = await apiFetch<ApiCompetitionExperience[]>(
+        `/api/v1/users/me/competitions/${compId}`,
+        { method: "DELETE" }
+      );
+      setCompetitions(updated);
+    } catch { /* silent */ } finally {
+      setDeleting(false);
+      setConfirmDeleteId(null);
+    }
+  }
+
   const overall = rankSummary.rank_overall;
   const rankColor = RANK_COLORS[overall] ?? RANK_COLORS.Bronze;
   const progressPct = overallProgressPercent(overall, rankSummary.skills);
@@ -74,11 +90,17 @@ export default function SkillBankPage() {
     .filter((r) => r.project_count > 0)
     .sort((a, b) => b.project_count - a.project_count);
 
-  const visibleComps = competitions.filter((c) => {
-    if (activeTab === "projects") return c.type === "project";
-    if (activeTab === "competitions") return c.type === "team";
-    return true;
-  });
+  const visibleComps = competitions
+    .filter((c) => {
+      if (activeTab === "projects") return c.type === "project";
+      if (activeTab === "competitions") return c.type === "team";
+      return true;
+    })
+    .sort((a, b) => {
+      if (!a.date) return 1;
+      if (!b.date) return -1;
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    });
 
   return (
     <div className="w-full min-h-screen bg-[#f5f7fa] py-4 sm:py-8">
@@ -238,6 +260,8 @@ export default function SkillBankPage() {
                       subtitle={comp.roles[0] ?? ""}
                       date={fmtDate(comp.date)}
                       githubUrl={comp.github_url ?? undefined}
+                      onEdit={() => setEditingComp(comp)}
+                      onDelete={() => setConfirmDeleteId(comp.id)}
                     />
                   ) : (
                     <TeamCompetitionCard
@@ -248,6 +272,8 @@ export default function SkillBankPage() {
                       date={fmtDate(comp.date)}
                       status={comp.reviewed ? "Finished" : "Pending"}
                       members={comp.contributor_ids.length + 1}
+                      onEdit={() => setEditingComp(comp)}
+                      onDelete={() => setConfirmDeleteId(comp.id)}
                     />
                   )
                 )}
@@ -257,6 +283,7 @@ export default function SkillBankPage() {
         </div>
       </div>
 
+      {/* Add modal */}
       {showAddProject && (
         <AddProjectModal
           onClose={() => setShowAddProject(false)}
@@ -265,6 +292,44 @@ export default function SkillBankPage() {
             setShowAddProject(false);
           }}
         />
+      )}
+
+      {/* Edit modal */}
+      {editingComp && (
+        <AddProjectModal
+          editEntry={editingComp}
+          onClose={() => setEditingComp(null)}
+          onSaved={(newList) => {
+            setCompetitions(newList);
+            setEditingComp(null);
+          }}
+        />
+      )}
+
+      {/* Delete confirm dialog */}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm flex flex-col gap-4">
+            <h3 className="text-base font-extrabold text-[#1b3168]">ลบผลงานนี้?</h3>
+            <p className="text-sm text-gray-500">การกระทำนี้ไม่สามารถย้อนกลับได้</p>
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setConfirmDeleteId(null)}
+                disabled={deleting}
+                className="flex-1 py-2.5 rounded-full border-2 border-gray-200 text-gray-600 text-sm font-bold hover:bg-gray-50 disabled:opacity-50"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={() => handleDelete(confirmDeleteId)}
+                disabled={deleting}
+                className="flex-1 py-2.5 rounded-full bg-red-500 text-white text-sm font-bold hover:bg-red-600 disabled:opacity-40"
+              >
+                {deleting ? "กำลังลบ…" : "ลบ"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
