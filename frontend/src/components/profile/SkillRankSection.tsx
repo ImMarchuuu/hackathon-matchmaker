@@ -1,4 +1,5 @@
 import React from "react";
+import { SkillIcon } from "@/components/Icons";
 
 export interface SkillWithRank {
   name: string;
@@ -18,7 +19,7 @@ export default function SkillRankSection({
     <section className="relative rounded-[2rem] border border-gray-200 bg-white p-8 pt-12 flex-[1.5] shadow-sm mt-8">
       {/* Absolute centered title pill overlapping top border */}
       <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-white border border-gray-200 px-6 py-2 rounded-full flex items-center gap-2 shadow-sm text-[#1b3168] font-bold text-sm tracking-widest uppercase">
-        <span className="text-[#1b3168]">💠</span>
+        <SkillIcon className="w-4 h-4 text-[#1b3168]" />
         SKILL RANK
       </div>
 
