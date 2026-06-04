@@ -221,7 +221,7 @@ export default function FindTeamPage() {
           )
         ) : people.length > 0 ? (
           <div className="flex flex-col gap-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full items-stretch">
               {people.map((person) => (
                 <PersonCard key={person.id} data={person} />
               ))}

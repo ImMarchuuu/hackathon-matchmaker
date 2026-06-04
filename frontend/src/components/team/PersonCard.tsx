@@ -111,7 +111,7 @@ export default function PersonCard({ data }: PersonCardProps) {
   const [saving, setSaving] = useState(false);
 
   return (
-    <article className="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow h-fit w-full p-6 flex flex-col gap-4">
+    <article className="bg-white border border-gray-200 rounded-2xl shadow-sm hover:shadow-md transition-shadow h-full w-full p-6 flex flex-col gap-4">
       {/* ── Top Section (Clickable) ── */}
       <Link
         href={`/profile/${data.username}`}
@@ -177,7 +177,8 @@ export default function PersonCard({ data }: PersonCardProps) {
       </div>
 
       {/* ── Bottom Section ── */}
-      <div className="flex justify-end mt-2">
+      {/* mt-auto pins the button to the bottom so stretched cards stay aligned */}
+      <div className="flex justify-end mt-auto pt-2">
         <button
           disabled={saving}
           onClick={async (e) => {
