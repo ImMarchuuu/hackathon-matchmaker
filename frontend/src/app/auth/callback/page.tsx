@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { resolveOnboardingDest } from "@/lib/onboarding";
 
 function CallbackInner() {
   const router = useRouter();
@@ -17,7 +18,9 @@ function CallbackInner() {
     }
 
     document.cookie = `grandline_auth=${token}; path=/; max-age=604800; SameSite=Lax`;
-    router.replace("/find-team");
+    // Returning user who already finished onboarding → straight to find-team.
+    // Otherwise (incl. first Google sign-in) → run onboarding.
+    resolveOnboardingDest().then((dest) => router.replace(dest));
   }, [params, router]);
 
   return (

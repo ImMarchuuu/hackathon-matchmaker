@@ -224,9 +224,9 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
 
         {/* Section 1: Cover Photo + Avatar */}
         <section className="relative w-full" aria-label="Cover photo and avatar">
-          <div className="w-full aspect-[4/1] overflow-hidden relative bg-blue-100 rounded-none sm:rounded-t-[2rem]">
+          <div className="w-full aspect-[4/1] overflow-hidden relative bg-[#1b3168] rounded-none sm:rounded-t-[2rem]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={user.cover_image ?? "/Bg.svg"} alt="Cover Photo" className="w-full h-full object-cover object-center" />
+            {user.cover_image && <img src={user.cover_image} alt="Cover Photo" className="w-full h-full object-cover object-center" />}
           </div>
           <div className="absolute -bottom-16 left-6 sm:left-12">
             <div className="w-32 h-32 rounded-full border-4 border-white overflow-hidden bg-white shadow-sm shrink-0">

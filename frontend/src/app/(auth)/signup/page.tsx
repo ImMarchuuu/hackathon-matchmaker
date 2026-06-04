@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
+import { setOnboardingDone } from "@/lib/onboarding";
 import type { AuthResponse, SignupPayload } from "@/types/auth";
 
 
@@ -36,6 +37,7 @@ export default function SignupPage() {
         body: JSON.stringify(payload),
       });
       document.cookie = `grandline_auth=${res.token}; path=/; max-age=604800; SameSite=Lax`;
+      setOnboardingDone(false); // fresh account → must go through onboarding
       router.push("/onboarding");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");

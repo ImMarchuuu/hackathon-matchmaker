@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
+import { resolveOnboardingDest } from "@/lib/onboarding";
 import type { AuthResponse, LoginPayload } from "@/types/auth";
 
 export default function LoginPage() {
@@ -28,7 +29,7 @@ export default function LoginPage() {
       });
       const maxAge = rememberMe ? 2592000 : 604800; // 30 days vs 7 days
       document.cookie = `grandline_auth=${res.token}; path=/; max-age=${maxAge}; SameSite=Lax`;
-      router.push("/find-team");
+      router.push(await resolveOnboardingDest());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
