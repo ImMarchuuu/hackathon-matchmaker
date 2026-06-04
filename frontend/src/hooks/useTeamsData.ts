@@ -52,7 +52,7 @@ function buildTeamViewModel(
     avatarUrl: leader?.avatar_url ?? "/profile.svg",
     title: team.title,
     authorName: leader?.name ?? "Unknown",
-    dateRange: `${fmt(team.start_date)} - ${fmt(team.end_date)}`,
+    dateRange: fmt(team.start_date),
     daysLeft: computeDaysLeft(team.start_date),
     status: team.status,
     roles: team.required_roles,

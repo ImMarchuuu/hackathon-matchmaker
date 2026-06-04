@@ -49,6 +49,11 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
   const [showAcceptModal, setShowAcceptModal] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
+  // favorite + share state
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [favSaving, setFavSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
+
   function fmt(d: string) {
     return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   }
@@ -66,6 +71,13 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
         setUser(profile);
         setMe(currentUser);
 
+        // Is this person already in my favorites? (only relevant for other users)
+        if (currentUser && currentUser._id !== profile._id) {
+          apiFetch<ApiUser[]>("/api/v1/users/me/favorites")
+            .then((favs) => setIsFavorited(favs.some((f) => f._id === profile._id)))
+            .catch(() => {});
+        }
+
         // non-critical secondary fetches — fail silently
         apiFetch<ApiCompetitionExperience[]>(`/api/v1/users/${profile._id}/competitions`)
           .then(setCompetitions)
@@ -78,7 +90,7 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
               .map((t) => ({
                 id: t._id,
                 teamName: t.title,
-                dateRange: `${fmt(t.start_date)} – ${fmt(t.end_date)}`,
+                dateRange: fmt(t.start_date),
                 daysLeft: daysLeft(t.start_date),
                 currentMembers: t.member_ids.length,
                 maxMembers: t.max_members,
@@ -181,6 +193,38 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
     } catch { /* silently fail */ } finally {
       setActionLoading(false);
     }
+  }
+
+  async function handleToggleFavorite() {
+    if (!user || favSaving) return;
+    setFavSaving(true);
+    const next = !isFavorited;
+    setIsFavorited(next);
+    try {
+      await apiFetch(`/api/v1/users/${user._id}/favorite`, { method: next ? "POST" : "DELETE" });
+    } catch {
+      setIsFavorited(!next); // revert on failure
+    } finally {
+      setFavSaving(false);
+    }
+  }
+
+  async function handleCopyProfileUrl() {
+    if (!user) return;
+    const url = `${window.location.origin}/profile/${user.username}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      // Fallback for browsers without clipboard API / insecure context
+      const el = document.createElement("textarea");
+      el.value = url;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   }
 
   if (loading) {
@@ -288,14 +332,41 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
                   edit profile
                 </Link>
               )}
-              <button
-                className="p-2.5 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors shadow-sm"
-                aria-label="Share profile"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-                </svg>
-              </button>
+              {/* Add to Favorite — only for other people's profiles */}
+              {me && !isCurrentUser && (
+                <button
+                  onClick={handleToggleFavorite}
+                  disabled={favSaving}
+                  aria-pressed={isFavorited}
+                  className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-bold tracking-wide transition-all shadow-sm border-2 disabled:opacity-60 ${
+                    isFavorited
+                      ? "bg-[#1b3168] text-white border-[#1b3168] hover:bg-[#12224f] hover:border-[#12224f]"
+                      : "bg-white text-[#1b3168] border-[#1b3168] hover:bg-gray-50"
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill={isFavorited ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                  </svg>
+                  {isFavorited ? "Favorite" : "Add to Favorite"}
+                </button>
+              )}
+              {/* Share — copies this profile's URL */}
+              <div className="relative">
+                <button
+                  onClick={handleCopyProfileUrl}
+                  className="p-2.5 rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors shadow-sm"
+                  aria-label="Copy profile link"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                  </svg>
+                </button>
+                {copied && (
+                  <span className="absolute top-full right-0 mt-2 whitespace-nowrap px-3 py-1.5 rounded-lg bg-[#1b3168] text-white text-xs font-semibold shadow-lg z-10">
+                    คัดลอกลิงก์แล้ว!
+                  </span>
+                )}
+              </div>
             </div>
           </section>
 

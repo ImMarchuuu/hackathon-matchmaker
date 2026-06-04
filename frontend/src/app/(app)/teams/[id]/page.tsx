@@ -99,7 +99,7 @@ export default function TeamDetailPage({ params }: { params: { id: string } }) {
             <div>
               <h2 className="text-2xl font-black text-[#1b3168]">{team.title}</h2>
               <p className="text-[#1b3168] font-bold mt-1">{team.leader.name} <span className="text-gray-400 font-medium">(กัปตัน)</span></p>
-              <p className="text-blue-400 text-sm font-semibold mt-1">{fmt(team.start_date)} – {fmt(team.end_date)}</p>
+              <p className="text-blue-400 text-sm font-semibold mt-1">{fmt(team.start_date)}</p>
             </div>
           </div>
           <span className={`px-5 py-2 rounded-full text-sm font-bold shadow-sm ${

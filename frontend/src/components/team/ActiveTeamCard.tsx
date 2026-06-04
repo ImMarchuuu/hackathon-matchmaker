@@ -124,18 +124,16 @@ export default function ActiveTeamCard({ data }: { data: ActiveTeamCardData }) {
   const openSkillCount = data.skills.filter(s => !filledSkillsSet.has(s)).length;
   const filledSkillCount = filledSkillsSet.size;
 
-  const isExpired = data.daysLeft === 0 &&
-    (data.status === "WAITING" || data.status === "IN_PROGRESS");
+  // Status now comes from the backend (it derives IN_PROGRESS from start_date),
+  // so the card just trusts data.status instead of guessing from daysLeft.
+  const isExpired = false;
 
   // ── Timer badge (top-right) ─────────────────────────────────────────────────
-  const timerLabel = isExpired
-    ? "เริ่มแล้ว"
-    : data.status === "IN_PROGRESS"
+  const timerLabel = data.status === "IN_PROGRESS"
     ? "กำลังดำเนินการ"
     : `อีก ${data.daysLeft} วัน`;
 
-  const timerColorClass = isExpired ? "text-gray-400"
-    : data.status === "WAITING" ? "text-orange-500" : "text-red-600";
+  const timerColorClass = data.status === "WAITING" ? "text-orange-500" : "text-red-600";
 
   // ── Status badge (bottom-right) ─────────────────────────────────────────────
   const STATUS_MAP = {

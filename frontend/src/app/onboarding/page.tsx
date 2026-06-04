@@ -428,32 +428,45 @@ export default function OnboardingPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // ── Gate on the localStorage flag; load the real user for name/prefill ────
+  // ── Gate on completion (localStorage OR backend); prefill the form ────────
   useEffect(() => {
     let active = true;
 
-    // Already finished onboarding on this browser → skip straight to find-team.
+    // Fast path: already finished on this browser → skip straight to find-team.
     if (isOnboardingDone()) {
       router.replace("/find-team");
       return;
     }
-    // Mark onboarding as started (not yet completed).
-    setOnboardingDone(false);
 
-    apiFetch<MeResponse>("/api/v1/users/me")
-      .then((me) => {
-        if (!active) return;
-        setUserName(me.name || "");
-        setBio(me.bio ?? "");
-        setGithub(me.github ?? "");
-        setLinkedin(me.linkedin ?? "");
-        if (me.avatar_url) setAvatarPreview(me.avatar_url);
-        if (me.cover_image) setCoverPreview(me.cover_image);
-        setLoadingUser(false);
-      })
-      .catch(() => {
+    (async () => {
+      let me: MeResponse;
+      try {
+        me = await apiFetch<MeResponse>("/api/v1/users/me");
+      } catch {
         if (active) router.replace("/login");
-      });
+        return;
+      }
+      if (!active) return;
+
+      // Returning user on a fresh browser (localStorage empty) — the backend is
+      // the source of truth, so don't force onboarding again.
+      if (me.onboarding_completed) {
+        setOnboardingDone(true);
+        router.replace("/find-team");
+        return;
+      }
+
+      // First time through — mark as started and prefill from the profile.
+      setOnboardingDone(false);
+      setUserName(me.name || "");
+      setBio(me.bio ?? "");
+      setGithub(me.github ?? "");
+      setLinkedin(me.linkedin ?? "");
+      if (me.avatar_url) setAvatarPreview(me.avatar_url);
+      if (me.cover_image) setCoverPreview(me.cover_image);
+      setLoadingUser(false);
+    })();
+
     return () => {
       active = false;
     };

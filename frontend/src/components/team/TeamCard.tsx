@@ -153,12 +153,11 @@ export default function TeamCard({ data, onRequest, onCancel }: TeamCardProps) {
   const openSkillCount = data.skills.filter(s => !filledSkillsSet.has(s)).length;
   const filledSkillCount = filledSkillsSet.size;
 
-  const isExpired = data.daysLeft === 0 &&
-    (data.status === "WAITING" || data.status === "IN_PROGRESS");
+  // The backend derives IN_PROGRESS from start_date, so a team is considered
+  // "already started" (can't request to join) once its status is IN_PROGRESS.
+  const isExpired = data.status === "IN_PROGRESS";
 
-  const statusKey = isExpired
-    ? "EXPIRED"
-    : data.status ?? null;
+  const statusKey = data.status ?? null;
   const statusCfg = statusKey ? STATUS_CONFIG[statusKey as keyof typeof STATUS_CONFIG] : null;
 
   return (

@@ -136,33 +136,43 @@ export default function PersonCard({ data }: PersonCardProps) {
       <hr className="border-gray-100 mt-2" />
 
       {/* ── Tags Section ── */}
+      {/* Both rows always render (placeholder when empty) so every card reserves
+          the same height and cards stay aligned across a grid row. */}
       <div className="flex flex-col gap-2 w-full min-w-0 mt-1">
-        
+
         {/* Role Tags (Row layout style matching design) */}
-        {data.roleTags && data.roleTags.length > 0 && (
-          <div className="flex flex-col lg:flex-row gap-2 lg:gap-4 lg:items-center min-w-0">
-            <div className="flex items-center gap-1.5 shrink-0 w-[100px]">
-              <RoleIcon className="w-4 h-4 text-[#1b3168]" />
-              <span className="text-[#1b3168] font-bold text-xs whitespace-nowrap">Role Tag :</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <DynamicTagList tags={data.roleTags.map(abbreviateRole)} textColorClass="text-[#1b3168]" />
-            </div>
+        <div className="flex flex-col lg:flex-row gap-2 lg:gap-4 lg:items-center min-w-0">
+          <div className="flex items-center gap-1.5 shrink-0 w-[100px]">
+            <RoleIcon className="w-4 h-4 text-[#1b3168]" />
+            <span className="text-[#1b3168] font-bold text-xs whitespace-nowrap">Role Tag :</span>
           </div>
-        )}
+          <div className="flex-1 min-w-0">
+            {data.roleTags && data.roleTags.length > 0 ? (
+              <DynamicTagList tags={data.roleTags.map(abbreviateRole)} textColorClass="text-[#1b3168]" />
+            ) : (
+              <div className="flex items-center min-h-[28px]">
+                <span className="text-gray-300 text-[11px] font-semibold italic">ยังไม่ได้ระบุ</span>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Skill Tags */}
-        {data.skillTags && data.skillTags.length > 0 && (
-          <div className="flex flex-col lg:flex-row gap-2 lg:gap-4 lg:items-center min-w-0">
-            <div className="flex items-center gap-1.5 shrink-0 w-[100px]">
-              <SkillIcon className="w-4 h-4 text-[#1b3168]" />
-              <span className="text-[#1b3168] font-bold text-xs whitespace-nowrap">Skill Tag :</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <DynamicTagList tags={data.skillTags} textColorClass="text-[#1b3168]" />
-            </div>
+        <div className="flex flex-col lg:flex-row gap-2 lg:gap-4 lg:items-center min-w-0">
+          <div className="flex items-center gap-1.5 shrink-0 w-[100px]">
+            <SkillIcon className="w-4 h-4 text-[#1b3168]" />
+            <span className="text-[#1b3168] font-bold text-xs whitespace-nowrap">Skill Tag :</span>
           </div>
-        )}
+          <div className="flex-1 min-w-0">
+            {data.skillTags && data.skillTags.length > 0 ? (
+              <DynamicTagList tags={data.skillTags} textColorClass="text-[#1b3168]" />
+            ) : (
+              <div className="flex items-center min-h-[28px]">
+                <span className="text-gray-300 text-[11px] font-semibold italic">ยังไม่ได้ระบุ</span>
+              </div>
+            )}
+          </div>
+        </div>
 
       </div>
 

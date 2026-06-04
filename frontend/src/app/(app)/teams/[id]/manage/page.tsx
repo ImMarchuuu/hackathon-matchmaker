@@ -46,7 +46,6 @@ export default function ManageTeamPage({ params }: { params: { id: string } }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [skillsInput, setSkillsInput] = useState("");
   const [maxMembers, setMaxMembers] = useState(4);
@@ -80,7 +79,6 @@ export default function ManageTeamPage({ params }: { params: { id: string } }) {
       setTitle(t.title);
       setDescription(t.description ?? "");
       setStartDate(t.start_date);
-      setEndDate(t.end_date);
       setSelectedRoles(t.required_roles);
       setSkillsInput(t.required_skills.join(", "));
       setMaxMembers(t.max_members);
@@ -114,7 +112,8 @@ export default function ManageTeamPage({ params }: { params: { id: string } }) {
           title,
           description,
           start_date: startDate,
-          end_date: endDate,
+          // No separate end date in the product — keep it mirrored to start_date.
+          end_date: startDate,
           required_roles: selectedRoles,
           required_skills: skills,
           max_members: maxMembers,
@@ -160,14 +159,28 @@ export default function ManageTeamPage({ params }: { params: { id: string } }) {
 
   async function handleConfirmAction() {
     if (!team || !confirmAction) return;
+    const action = confirmAction;
+    const nextStatus = action === "cancel" ? "CANCELLED" : "COMPLETED";
     setActioning(true);
     try {
       await apiFetch(`/api/v1/teams/${team._id}/status`, {
         method: "PATCH",
-        body: JSON.stringify({ status: confirmAction === "cancel" ? "CANCELLED" : "COMPLETED" }),
+        body: JSON.stringify({ status: nextStatus }),
       });
-      router.replace("/active-teams");
-    } finally {
+      // Optimistically lock the team into its finished state so the Danger Zone
+      // can no longer be acted on while we navigate away.
+      setTeam((prev) => (prev ? { ...prev, status: nextStatus } : prev));
+      // After completing, send the leader to rate their teammates — unless they
+      // were the only member, in which case there's nobody to review.
+      if (action === "complete" && team.member_ids.length > 1) {
+        router.replace(`/teams/${team._id}/rate`);
+      } else {
+        router.replace("/active-teams");
+      }
+      // Keep `actioning` true so the full-screen spinner stays up until the
+      // navigation completes — the component unmounts on its own.
+    } catch {
+      // Only release the lock if something went wrong; otherwise we navigate away.
       setActioning(false);
       setConfirmAction(null);
     }
@@ -183,6 +196,7 @@ export default function ManageTeamPage({ params }: { params: { id: string } }) {
 
   if (!team || !me) return null;
 
+  const isFinished = team.status === "COMPLETED" || team.status === "CANCELLED";
   const memberSet = new Set(team.member_ids);
   const pendingInviteIds = new Set(
     team.invites.filter((i) => i.status === "pending").map((i) => i.user_id)
@@ -230,25 +244,14 @@ export default function ManageTeamPage({ params }: { params: { id: string } }) {
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-gray-500">วันต้นกิจกรรม</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-800 focus:outline-none focus:border-[#1b3168]"
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-gray-500">วันสิ้นสุด</label>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-800 focus:outline-none focus:border-[#1b3168]"
-            />
-          </div>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-bold text-gray-500">วันที่เริ่มต้นกิจกรรม</label>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-800 focus:outline-none focus:border-[#1b3168]"
+          />
         </div>
 
         <div className="flex flex-col gap-1.5">
@@ -381,22 +384,41 @@ export default function ManageTeamPage({ params }: { params: { id: string } }) {
       <section className="w-full max-w-3xl bg-white rounded-[2rem] shadow-sm border border-red-100 p-6 sm:p-8 flex flex-col gap-4">
         <h2 className="text-red-600 font-black text-base">Danger Zone</h2>
 
-        <div className="flex flex-col sm:flex-row gap-3">
-          <button
-            onClick={() => setConfirmAction("complete")}
-            className="flex-1 py-3 rounded-2xl bg-green-500 text-white text-sm font-bold hover:bg-green-600 transition-colors flex flex-col items-center gap-1"
-          >
-            <span>จบทีม (Complete)</span>
-            <span className="text-xs font-medium opacity-80">สมาชิกได้รับแต้ม Skill + แจ้งให้ Rating กัน</span>
-          </button>
-          <button
-            onClick={() => setConfirmAction("cancel")}
-            className="flex-1 py-3 rounded-2xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition-colors flex flex-col items-center gap-1"
-          >
-            <span>ยกเลิกทีม (Cancel)</span>
-            <span className="text-xs font-medium opacity-80">ลบข้อมูลทีม ทุกคนออกจากทีม</span>
-          </button>
-        </div>
+        {isFinished ? (
+          <div className="flex flex-col items-center gap-3 py-2 text-center">
+            <p className="text-sm font-bold text-gray-500">
+              {team.status === "COMPLETED" ? "ทีมนี้จบแล้ว" : "ทีมนี้ถูกยกเลิกแล้ว"}
+              {" "}— ไม่สามารถจบทีมหรือยกเลิกได้อีก
+            </p>
+            {team.status === "COMPLETED" && team.member_ids.length > 1 && (
+              <Link
+                href={`/teams/${team._id}/rate`}
+                className="px-6 py-2.5 rounded-full bg-[#1b3168] text-white text-sm font-bold hover:bg-[#12224f] transition-colors"
+              >
+                ให้คะแนนเพื่อนร่วมทีม
+              </Link>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
+              onClick={() => setConfirmAction("complete")}
+              disabled={actioning}
+              className="flex-1 py-3 rounded-2xl bg-green-500 text-white text-sm font-bold hover:bg-green-600 transition-colors flex flex-col items-center gap-1 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <span>จบทีม (Complete)</span>
+              <span className="text-xs font-medium opacity-80">สมาชิกได้รับแต้ม Skill + แจ้งให้ Rating กัน</span>
+            </button>
+            <button
+              onClick={() => setConfirmAction("cancel")}
+              disabled={actioning}
+              className="flex-1 py-3 rounded-2xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 transition-colors flex flex-col items-center gap-1 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <span>ยกเลิกทีม (Cancel)</span>
+              <span className="text-xs font-medium opacity-80">ลบข้อมูลทีม ทุกคนออกจากทีม</span>
+            </button>
+          </div>
+        )}
       </section>
 
       {/* ── Confirm Modal ── */}
@@ -458,6 +480,18 @@ export default function ManageTeamPage({ params }: { params: { id: string } }) {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* ── Full-screen processing overlay ── */}
+      {/* Stays up from confirm until the page navigates away, so the leader
+          can't touch the Danger Zone again and the wait is never a blank pause. */}
+      {actioning && (
+        <div className="fixed inset-0 z-[60] bg-white/70 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
+          <div className="w-12 h-12 border-4 border-[#1b3168] border-t-transparent rounded-full animate-spin" />
+          <p className="text-[#1b3168] font-bold text-sm">
+            {confirmAction === "cancel" ? "กำลังยกเลิกทีม…" : "กำลังจบทีม…"}
+          </p>
         </div>
       )}
     </div>

@@ -1,3 +1,5 @@
+import re
+
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -24,16 +26,20 @@ async def get_all(
         query["status"] = status
     if role:
         query["required_roles"] = role
-    if q:
-        query["$text"] = {"$search": q}
+    if q and q.strip():
+        # Case-insensitive substring match so partial team names match while typing
+        # (e.g. "hack" → "Hackathon Alpha"). $text only matched whole tokens.
+        pattern = re.escape(q.strip())
+        query["$or"] = [
+            {"title": {"$regex": pattern, "$options": "i"}},
+            {"description": {"$regex": pattern, "$options": "i"}},
+            {"required_skills": {"$regex": pattern, "$options": "i"}},
+        ]
 
     total = await db["teams"].count_documents(query)
     skip = (page - 1) * limit
 
-    sort = [("score", {"$meta": "textScore"})] if q else [("created_at", -1)]
-    projection = {"score": {"$meta": "textScore"}} if q else {}
-
-    cursor = db["teams"].find(query, projection).sort(sort).skip(skip).limit(limit)
+    cursor = db["teams"].find(query).sort("created_at", -1).skip(skip).limit(limit)
     items = await cursor.to_list(length=limit)
     return items, total
 

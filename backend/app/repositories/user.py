@@ -1,3 +1,5 @@
+import re
+
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -20,8 +22,16 @@ async def get_all(
     limit: int = 20,
 ) -> tuple[list[dict], int]:
     query: dict = {}
-    if q:
-        query["$text"] = {"$search": q}
+    if q and q.strip():
+        # Case-insensitive substring match so partial usernames/names match while
+        # typing (e.g. "joh" → "john_doe"). $text only matched whole tokens.
+        pattern = re.escape(q.strip())
+        query["$or"] = [
+            {"name": {"$regex": pattern, "$options": "i"}},
+            {"username": {"$regex": pattern, "$options": "i"}},
+            {"bio": {"$regex": pattern, "$options": "i"}},
+            {"skills.name": {"$regex": pattern, "$options": "i"}},
+        ]
     if role:
         query["role.name"] = role
     if skill:
@@ -30,10 +40,7 @@ async def get_all(
     total = await db["users"].count_documents(query)
     skip = (page - 1) * limit
 
-    sort = [("score", {"$meta": "textScore"})] if q else [("created_at", -1)]
-    projection = {**_SAFE_PROJECTION, **({"score": {"$meta": "textScore"}} if q else {})}
-
-    cursor = db["users"].find(query, projection).sort(sort).skip(skip).limit(limit)
+    cursor = db["users"].find(query, _SAFE_PROJECTION).sort("created_at", -1).skip(skip).limit(limit)
     items = await cursor.to_list(length=limit)
     return items, total
 

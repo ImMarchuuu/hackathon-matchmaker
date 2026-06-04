@@ -5,9 +5,18 @@ const pwa = withPWA({
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
-  disable: process.env.NODE_ENV === "development",
+  // SW only on real production: off for local dev and Vercel preview deploys,
+  // so previews always serve fresh code without a service worker masking it.
+  disable:
+    process.env.NODE_ENV === "development" ||
+    process.env.VERCEL_ENV === "preview",
   workboxOptions: {
     disableDevLogs: true,
+    // New SW takes control immediately and purges precaches from older builds,
+    // so a fresh deploy is never masked by a stale service worker.
+    skipWaiting: true,
+    clientsClaim: true,
+    cleanupOutdatedCaches: true,
     runtimeCaching: [
       // ── Next.js static chunks — Cache First (content-hashed) ─────────────
       {

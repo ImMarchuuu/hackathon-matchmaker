@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime, timedelta, timezone
 from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -8,6 +8,32 @@ from app.models.base import PyObjectId
 from app.models.user import RoleName, UserPublicResponse
 
 TeamStatus = Literal["WAITING", "IN_PROGRESS", "COMPLETED", "CANCELLED"]
+
+# Project timezone (Thailand, UTC+7). The container clock runs in UTC, so we
+# convert to local time before comparing date-only start dates — otherwise a
+# team dated "today" stays WAITING during the UTC evening / Thai early morning.
+APP_TZ = timezone(timedelta(hours=7))
+
+
+def effective_status(doc: dict) -> str:
+    """Derive the live status from the stored one.
+
+    A team is only ever persisted as WAITING / COMPLETED / CANCELLED. The
+    IN_PROGRESS state is derived on read: a WAITING team whose start_date has
+    arrived (today >= start_date, in app-local time) is reported as IN_PROGRESS.
+    This keeps a single source of truth in the backend instead of each page
+    guessing from the date on the frontend.
+    """
+    status = doc.get("status", "WAITING")
+    if status != "WAITING":
+        return status
+    start = doc.get("start_date")
+    try:
+        if start and date.fromisoformat(start) <= datetime.now(APP_TZ).date():
+            return "IN_PROGRESS"
+    except (ValueError, TypeError):
+        pass
+    return status
 
 
 # ─── Sub-documents ────────────────────────────────────────────────────────────
@@ -140,6 +166,7 @@ class TeamResponse(BaseModel):
             **doc,
             "_id": str(doc["_id"]),
             "leader_id": str(doc["leader_id"]),
+            "status": effective_status(doc),
             "member_ids": [str(m) for m in doc.get("member_ids", [])],
             "join_requests": [
                 {**r, "user_id": str(r["user_id"])}
@@ -169,6 +196,7 @@ class TeamDetailResponse(TeamResponse):
             **doc,
             "_id": str(doc["_id"]),
             "leader_id": str(doc["leader_id"]),
+            "status": effective_status(doc),
             "member_ids": [str(m) for m in doc.get("member_ids", [])],
             "leader": UserPublicResponse.from_document(leader_doc).model_dump(),
             "members": [UserPublicResponse.from_document(m).model_dump() for m in member_docs],
