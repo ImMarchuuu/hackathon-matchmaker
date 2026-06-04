@@ -6,6 +6,7 @@ import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import "./onboarding.css";
 import FindTeamContent from "@/components/team/FindTeamContent";
+import { setOnboardingDone } from "@/lib/onboarding";
 import { MOCK_TEAMS, MOCK_PEOPLE } from "./mockData";
 
 /* ═══════════════════════════════════════════════════
@@ -143,7 +144,8 @@ export default function FindTeamView() {
   const [isFadingOut, setIsFadingOut] = useState(false);
 
   const handleCoachFinish = useCallback(() => {
-    // Start a smooth fade-out, then navigate to the real page
+    // Onboarding fully done now → persist the flag, then navigate.
+    setOnboardingDone(true);
     setIsFadingOut(true);
     setTimeout(() => {
       router.replace("/find-team");

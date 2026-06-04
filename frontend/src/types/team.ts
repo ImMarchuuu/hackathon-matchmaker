@@ -12,6 +12,15 @@ export interface ApiJoinRequest {
   created_at: string;
 }
 
+export type InviteStatus = "pending" | "accepted" | "declined";
+
+export interface ApiInvite {
+  id: string;
+  user_id: string;
+  status: InviteStatus;
+  created_at: string;
+}
+
 /** Raw shape returned by GET /api/v1/teams and GET /api/v1/teams/{id} */
 export interface ApiTeam {
   _id: string;
@@ -28,6 +37,7 @@ export interface ApiTeam {
   max_members: number;
   description?: string;
   join_requests: ApiJoinRequest[];
+  invites: ApiInvite[];
 }
 
 export interface TeamCardData {

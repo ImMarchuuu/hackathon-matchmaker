@@ -17,6 +17,7 @@ export interface ApiNotification {
     team_id?: string;
     team_name?: string;
     requester_id?: string;
+    requester_username?: string;
     requester_name?: string;
     requester_avatar?: string | null;
     request_id?: string;

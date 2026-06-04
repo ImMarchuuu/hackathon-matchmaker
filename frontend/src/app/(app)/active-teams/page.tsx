@@ -20,9 +20,15 @@ function buildCardData(team: ApiTeam, userMap: Record<string, ApiUser>, myId: st
   const leader = userMap[team.leader_id];
   const members = team.member_ids.map((id) => userMap[id]).filter(Boolean) as ApiUser[];
 
+  const memberRoles = new Set(members.flatMap((u) => u.role.map((r) => r.name)));
+  const filledRoles = team.required_roles.filter((r) => memberRoles.has(r));
+
+  const memberSkills = new Set(members.flatMap((u) => u.skills.map((s) => s.name)));
+  const filledSkills = team.required_skills.filter((s) => memberSkills.has(s));
+
   return {
     id: team._id,
-    avatarUrl: leader?.avatar_url ?? "/avatar.png",
+    avatarUrl: leader?.avatar_url ?? "/profile.svg",
     title: team.title,
     authorName: leader?.name ?? "Unknown",
     dateRange: `${fmt(team.start_date)} - ${fmt(team.end_date)}`,
@@ -30,14 +36,17 @@ function buildCardData(team: ApiTeam, userMap: Record<string, ApiUser>, myId: st
     status: team.status,
     roles: team.required_roles,
     skills: team.required_skills,
+    filledRoles,
+    filledSkills,
+    positions: (team.positions ?? []).map((p) => ({ role: p.role, filled: p.filled })),
     currentMembers: team.member_ids.length,
     maxMembers: team.max_members,
-    memberAvatars: members.map((u) => u.avatar_url ?? "/avatar.png"),
+    memberAvatars: members.map((u) => u.avatar_url ?? "/profile.svg"),
     description: team.description,
     isLeader: team.leader_id === myId,
     detailedMembers: members.map((u) => ({
       name: u.name,
-      avatar: u.avatar_url ?? "/avatar.png",
+      avatar: u.avatar_url ?? "/profile.svg",
       role: u.role[0]?.name ?? "Member",
       score: u.behavioral_rates,
     })),
@@ -55,18 +64,31 @@ export default function ActiveTeamsPage() {
     async function load() {
       try {
         const me = await apiFetch<ApiUser>("/api/v1/users/me");
-        const [apiTeams, apiUsers] = await Promise.all([
-          apiFetch<ApiTeam[]>(`/api/v1/users/${me._id}/teams`),
-          apiFetch<ApiUser[]>("/api/v1/users"),
-        ]);
+        const apiTeams = await apiFetch<ApiTeam[]>(`/api/v1/users/${me._id}/teams`);
 
-        const userMap = Object.fromEntries(apiUsers.map((u) => [u._id, u]));
-        // ensure current user is always in the map (in case they're not in /users list)
-        userMap[me._id] = me;
+        // Collect only the user IDs referenced by these teams
+        const neededIds = new Set<string>([me._id]);
+        for (const t of apiTeams) {
+          neededIds.add(t.leader_id);
+          t.member_ids.forEach((id) => neededIds.add(id));
+        }
+        const userResults = await Promise.all(
+          Array.from(neededIds).map((id) =>
+            apiFetch<ApiUser>(`/api/v1/users/${id}`).catch(() => null)
+          )
+        );
+        const userMap: Record<string, ApiUser> = { [me._id]: me };
+        for (const u of userResults) {
+          if (u) userMap[u._id] = u;
+        }
 
         if (!cancelled) setTeams(apiTeams.map((t) => buildCardData(t, userMap, me._id)));
-      } catch {
-        if (!cancelled) router.replace("/login");
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error("[active-teams] load failed:", msg);
+        const isAuthError = msg.includes("401") || msg.toLowerCase().includes("unauthorized") || msg.toLowerCase().includes("not authenticated");
+        if (!cancelled && isAuthError) router.replace("/login");
+        // non-auth errors (404, 500, network) → stay on page, show empty state
       } finally {
         if (!cancelled) setLoading(false);
       }

@@ -69,6 +69,9 @@ export interface TeamCardViewModel {
   status: "WAITING" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
   roles: string[];
   skills: string[];
+  filledRoles: string[];
+  filledSkills: string[];
+  positions: { role: string; filled: boolean }[];
   currentMemberCount: number;
   maxMembers: number;
   memberAvatars: string[];

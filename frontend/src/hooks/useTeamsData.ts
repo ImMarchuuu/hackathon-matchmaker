@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { apiFetch } from "@/lib/api";
 import type { ApiUser } from "@/types/profile";
 import type { ApiTeam } from "@/types/team";
@@ -41,9 +41,15 @@ function buildTeamViewModel(
     }
   }
 
+  const memberRoles = new Set(members.flatMap((u) => u.role.map((r) => r.name)));
+  const filledRoles = team.required_roles.filter((r) => memberRoles.has(r));
+
+  const memberSkills = new Set(members.flatMap((u) => u.skills.map((s) => s.name)));
+  const filledSkills = team.required_skills.filter((s) => memberSkills.has(s));
+
   return {
     id: team._id,
-    avatarUrl: leader?.avatar_url ?? "/avatar.png",
+    avatarUrl: leader?.avatar_url ?? "/profile.svg",
     title: team.title,
     authorName: leader?.name ?? "Unknown",
     dateRange: `${fmt(team.start_date)} - ${fmt(team.end_date)}`,
@@ -51,13 +57,16 @@ function buildTeamViewModel(
     status: team.status,
     roles: team.required_roles,
     skills: team.required_skills,
+    filledRoles,
+    filledSkills,
+    positions: (team.positions ?? []).map((p) => ({ role: p.role, filled: p.filled })),
     currentMemberCount: team.member_ids.length,
     maxMembers: team.max_members,
-    memberAvatars: members.map((u) => u.avatar_url ?? "/avatar.png"),
+    memberAvatars: members.map((u) => u.avatar_url ?? "/profile.svg"),
     description: team.description,
     detailedMembers: members.map((u) => ({
       name: u.name,
-      avatar: u.avatar_url ?? "/avatar.png",
+      avatar: u.avatar_url ?? "/profile.svg",
       role: u.role[0]?.name ?? "Member",
       score: u.behavioral_rates,
     })),
@@ -72,42 +81,92 @@ function buildPeopleViewModel(user: ApiUser, favoriteIds: Set<string>): PeopleCa
     username: user.username,
     name: user.name,
     bio: user.bio ?? "",
-    avatarUrl: user.avatar_url ?? "/avatar.png",
+    avatarUrl: user.avatar_url ?? "/profile.svg",
     roleTags: user.role.map((r) => r.name),
     skillTags: user.skills.map((s) => s.name),
     isFavorited: favoriteIds.has(user._id),
   };
 }
 
-export function useTeamsData() {
+interface PaginatedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+  has_next: boolean;
+}
+
+const LIMIT = 20;
+
+export function useTeamsData(params: {
+  q?: string;
+  roles?: string[];
+  page?: number;
+} = {}) {
+  const { q = "", roles = [], page = 1 } = params;
+
   const [teams, setTeams] = useState<TeamCardViewModel[]>([]);
   const [people, setPeople] = useState<PeopleCardViewModel[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [hasNextTeams, setHasNextTeams] = useState(false);
+  const [hasNextPeople, setHasNextPeople] = useState(false);
+  const [totalTeams, setTotalTeams] = useState(0);
+  const [totalPeople, setTotalPeople] = useState(0);
+
+  // Debounce q by 350ms so we don't fire on every keystroke
+  const [debouncedQ, setDebouncedQ] = useState(q);
+  const debounceTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => {
+    clearTimeout(debounceTimer.current);
+    debounceTimer.current = setTimeout(() => setDebouncedQ(q), 350);
+    return () => clearTimeout(debounceTimer.current);
+  }, [q]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
+      setIsLoading(true);
       try {
-        setIsLoading(true);
-        const [apiTeams, apiUsers, apiFavorites, me] = await Promise.all([
-          apiFetch<ApiTeam[]>("/api/v1/teams"),
-          apiFetch<ApiUser[]>("/api/v1/users"),
+        const roleParam = roles.length === 1 ? `&role=${encodeURIComponent(roles[0])}` : "";
+        const qParam = debouncedQ ? `&q=${encodeURIComponent(debouncedQ)}` : "";
+        const pageParam = `&page=${page}&limit=${LIMIT}`;
+
+        const [teamsResult, usersResult, apiFavorites, me] = await Promise.all([
+          apiFetch<PaginatedResult<ApiTeam>>(`/api/v1/teams?${qParam}${roleParam}${pageParam}`),
+          apiFetch<PaginatedResult<ApiUser>>(`/api/v1/users?${qParam}${roleParam}${pageParam}`),
           apiFetch<ApiUser[]>("/api/v1/users/me/favorites").catch(() => [] as ApiUser[]),
           apiFetch<ApiUser>("/api/v1/users/me").catch(() => null),
         ]);
 
-        const userMap = Object.fromEntries(apiUsers.map((u) => [u._id, u]));
+        if (cancelled) return;
+
         const favoriteIds = new Set(apiFavorites.map((u) => u._id));
         const meId = me?._id ?? null;
 
-        if (!cancelled) {
-          setTeams(apiTeams.map((t) => buildTeamViewModel(t, userMap, meId)));
-          setPeople(apiUsers.map((u) => buildPeopleViewModel(u, favoriteIds)));
-        }
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load data");
+        // Build a userMap from the users page — leaders not in this page will show "Unknown"
+        const userMap = Object.fromEntries(
+          (usersResult.items as ApiUser[]).map((u: ApiUser) => [u._id, u])
+        );
+
+        // Apply multi-role client-side filter only when more than 1 role selected
+        const rawTeams = (teamsResult.items as ApiTeam[]).filter((t: ApiTeam) =>
+          roles.length <= 1 || roles.some((r) => t.required_roles.includes(r))
+        );
+        const rawPeople = (usersResult.items as ApiUser[]).filter((u: ApiUser) =>
+          u._id !== meId &&
+          (roles.length <= 1 || roles.some((r) => u.role.some((ur) => ur.name === r)))
+        );
+
+        setTeams(rawTeams.map((t: ApiTeam) => buildTeamViewModel(t, userMap, meId)));
+        setPeople(rawPeople.map((u: ApiUser) => buildPeopleViewModel(u, favoriteIds)));
+        setHasNextTeams(teamsResult.has_next);
+        setHasNextPeople(usersResult.has_next);
+        setTotalTeams(teamsResult.total);
+        // Exclude self from the count so it matches the filtered list
+        setTotalPeople(meId ? Math.max(0, usersResult.total - 1) : usersResult.total);
+      } catch {
+        // silent — keep previous results visible
       } finally {
         if (!cancelled) setIsLoading(false);
       }
@@ -115,7 +174,7 @@ export function useTeamsData() {
 
     load();
     return () => { cancelled = true; };
-  }, []);
+  }, [debouncedQ, roles.join(","), page]);
 
-  return { teams, setTeams, people, isLoading, error };
+  return { teams, setTeams, people, isLoading, hasNextTeams, hasNextPeople, totalTeams, totalPeople };
 }

@@ -75,6 +75,8 @@ class UserDocument(BaseModel):
     github: Optional[str] = None
     linkedin: Optional[str] = None
     mbti: Optional[str] = None
+    email_verified: bool = False
+    onboarding_completed: bool = False
     behavioral_rates: float = Field(default=0.0, ge=0.0, le=5.0)
     rank_overall: RankTitle = "Bronze"
     role: list[RoleEntry] = []
@@ -104,6 +106,7 @@ class UpdateProfileRequest(BaseModel):
     linkedin: Optional[str] = None
     roles: Optional[list[RoleName]] = None
     display_roles: Optional[list[str]] = None
+    onboarding_completed: Optional[bool] = None
 
 
 class UpdateSkillsRequest(BaseModel):
@@ -147,6 +150,15 @@ class RoleRankEntry(BaseModel):
     project_count: int
     tier: int
     rank_title: str
+
+
+class PaginatedResponse(BaseModel):
+    """Generic paginated wrapper used by list endpoints."""
+    items: list
+    total: int
+    page: int
+    limit: int
+    has_next: bool
 
 
 class RankSummaryResponse(BaseModel):
@@ -193,6 +205,8 @@ class UserPublicResponse(BaseModel):
     github: Optional[str] = None
     linkedin: Optional[str] = None
     mbti: Optional[str] = None
+    email_verified: bool = False
+    onboarding_completed: bool = False
     behavioral_rates: float
     rank_overall: RankTitle
     role: list[RoleEntry]

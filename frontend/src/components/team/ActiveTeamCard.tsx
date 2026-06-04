@@ -15,6 +15,9 @@ export interface ActiveTeamCardData {
   status: TeamStatus;
   roles: string[];
   skills: string[];
+  filledRoles?: string[];
+  filledSkills?: string[];
+  positions?: { role: string; filled: boolean }[];
   currentMembers: number;
   maxMembers: number;
   memberAvatars: string[];
@@ -37,7 +40,7 @@ const abbreviateRole = (role: string) => {
 };
 
 // ─── DynamicTagList (max-2-row logic, identical to TeamCard) ─────────────────
-function DynamicTagList({ tags, textColorClass }: { tags: string[]; textColorClass: string }) {
+function DynamicTagList({ tags, filledSet, textColorClass }: { tags: string[]; filledSet?: Set<string>; textColorClass: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [visibleCount, setVisibleCount] = useState(tags.length);
 
@@ -82,15 +85,17 @@ function DynamicTagList({ tags, textColorClass }: { tags: string[]; textColorCla
       className="flex flex-wrap gap-2 w-full content-start relative min-h-[60px] overflow-hidden"
     >
       {tags.map((tag, idx) => {
+        const isFilled = filledSet?.has(tag) ?? false;
         const isVisible = idx < visibleCount;
         return (
           <span
             key={idx}
             data-tag="true"
-            className={`bg-white border border-gray-100 shadow-sm ${textColorClass} text-[11px] font-semibold px-3 py-1 rounded-full items-center justify-center whitespace-nowrap ${
-              isVisible ? "flex" : "absolute opacity-0 pointer-events-none -z-10"
-            }`}
+            className={`border text-[11px] font-semibold px-3 py-1 rounded-full items-center gap-1 justify-center whitespace-nowrap
+              ${isFilled ? "bg-gray-50 border-gray-200 text-gray-400" : `bg-white border-gray-100 shadow-sm ${textColorClass}`}
+              ${isVisible ? "flex" : "absolute opacity-0 pointer-events-none -z-10"}`}
           >
+            {isFilled && <span className="text-[9px] leading-none">✓</span>}
             {tag}
           </span>
         );
@@ -108,6 +113,16 @@ function DynamicTagList({ tags, textColorClass }: { tags: string[]; textColorCla
 export default function ActiveTeamCard({ data }: { data: ActiveTeamCardData }) {
   const router = useRouter();
   const [isExpanded, setIsExpanded] = useState(false);
+
+  const filledRolesSet = new Set(data.filledRoles ?? []);
+  const filledRolesAbbrevSet = new Set(Array.from(filledRolesSet).map(abbreviateRole));
+  const filledRoleCount = data.roles.filter(r => filledRolesSet.has(r)).length;
+  const openRoleCount = data.roles.length - filledRoleCount;
+  const allPositions = data.positions ?? [];
+
+  const filledSkillsSet = new Set(data.filledSkills ?? []);
+  const openSkillCount = data.skills.filter(s => !filledSkillsSet.has(s)).length;
+  const filledSkillCount = filledSkillsSet.size;
 
   const isExpired = data.daysLeft === 0 &&
     (data.status === "WAITING" || data.status === "IN_PROGRESS");
@@ -147,7 +162,7 @@ export default function ActiveTeamCard({ data }: { data: ActiveTeamCardData }) {
             <div className="w-16 h-16 rounded-full overflow-hidden shrink-0 border border-gray-100 bg-gray-50">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={data.avatarUrl || "https://i.pravatar.cc/150"}
+                src={data.avatarUrl || "/profile.svg"}
                 alt={data.authorName}
                 className="w-full h-full object-cover"
               />
@@ -183,17 +198,30 @@ export default function ActiveTeamCard({ data }: { data: ActiveTeamCardData }) {
                 <path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .6-.4 1-1 1H6c-.6 0-1-.4-1-1v-1h14v1z" />
               </svg>
               <span className="text-[#1b3168] font-bold text-xs">Role Tag</span>
+              {data.roles.length > 0 && (
+                <span className="text-gray-400 text-[10px] font-medium ml-auto leading-none">
+                  {openRoleCount > 0 && <span className="text-[#1b3168]">{openRoleCount} open</span>}
+                  {openRoleCount > 0 && filledRoleCount > 0 && <span> · </span>}
+                  {filledRoleCount > 0 && <span>{filledRoleCount} filled</span>}
+                </span>
+              )}
             </div>
             {isExpanded ? (
               <div className="flex flex-wrap content-start gap-2 min-h-[60px]">
-                {data.roles.map((role, idx) => (
-                  <span key={idx} className="bg-white border border-gray-100 shadow-sm text-[#1b3168] text-[11px] font-semibold px-3 py-1 rounded-full flex items-center justify-center whitespace-nowrap">
-                    {abbreviateRole(role)}
-                  </span>
-                ))}
+                {data.roles.map((role, idx) => {
+                  const abbrev = abbreviateRole(role);
+                  const isFilled = filledRolesAbbrevSet.has(abbrev);
+                  return (
+                    <span key={idx} className={`border text-[11px] font-semibold px-3 py-1 rounded-full flex items-center gap-1 justify-center whitespace-nowrap
+                      ${isFilled ? "bg-gray-50 border-gray-200 text-gray-400" : "bg-white border-gray-100 shadow-sm text-[#1b3168]"}`}>
+                      {isFilled && <span className="text-[9px] leading-none">✓</span>}
+                      {abbrev}
+                    </span>
+                  );
+                })}
               </div>
             ) : (
-              <DynamicTagList tags={data.roles.map(abbreviateRole)} textColorClass="text-[#1b3168]" />
+              <DynamicTagList tags={data.roles.map(abbreviateRole)} filledSet={filledRolesAbbrevSet} textColorClass="text-[#1b3168]" />
             )}
           </div>
 
@@ -204,17 +232,29 @@ export default function ActiveTeamCard({ data }: { data: ActiveTeamCardData }) {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
               <span className="text-[#1b3168] font-bold text-xs">Skill Tag</span>
+              {data.skills.length > 0 && (filledSkillCount > 0 || openSkillCount > 0) && (
+                <span className="text-gray-400 text-[10px] font-medium ml-auto leading-none">
+                  {openSkillCount > 0 && <span className="text-[#1b3168]">{openSkillCount} open</span>}
+                  {openSkillCount > 0 && filledSkillCount > 0 && <span> · </span>}
+                  {filledSkillCount > 0 && <span>{filledSkillCount} filled</span>}
+                </span>
+              )}
             </div>
             {isExpanded ? (
               <div className="flex flex-wrap content-start gap-2 min-h-[60px]">
-                {data.skills.map((skill, idx) => (
-                  <span key={idx} className="bg-white border border-gray-100 shadow-sm text-[#1b3168] text-[11px] font-semibold px-3 py-1 rounded-full flex items-center justify-center whitespace-nowrap">
-                    {skill}
-                  </span>
-                ))}
+                {data.skills.map((skill, idx) => {
+                  const isFilled = filledSkillsSet.has(skill);
+                  return (
+                    <span key={idx} className={`border text-[11px] font-semibold px-3 py-1 rounded-full flex items-center gap-1 justify-center whitespace-nowrap
+                      ${isFilled ? "bg-gray-50 border-gray-200 text-gray-400" : "bg-white border-gray-100 shadow-sm text-[#1b3168]"}`}>
+                      {isFilled && <span className="text-[9px] leading-none">✓</span>}
+                      {skill}
+                    </span>
+                  );
+                })}
               </div>
             ) : (
-              <DynamicTagList tags={data.skills} textColorClass="text-[#1b3168]" />
+              <DynamicTagList tags={data.skills} filledSet={filledSkillsSet} textColorClass="text-[#1b3168]" />
             )}
           </div>
         </div>

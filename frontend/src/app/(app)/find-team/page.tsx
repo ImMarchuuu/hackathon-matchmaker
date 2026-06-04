@@ -19,13 +19,17 @@ export default function FindTeamPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  const LIMIT = 20;
 
-  const { teams, setTeams, people, isLoading } = useTeamsData();
+  const { teams, setTeams, people, isLoading, hasNextTeams, hasNextPeople, totalTeams, totalPeople } =
+    useTeamsData({ q: searchQuery, roles: activeFilters, page });
 
   const [requestTeam, setRequestTeam] = useState<TeamCardViewModel | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const toggleFilter = (role: string) => {
+    setPage(1);
     setActiveFilters((prev) =>
       prev.includes(role) ? prev.filter((r) => r !== role) : [...prev, role]
     );
@@ -63,26 +67,19 @@ export default function FindTeamPage() {
     }
   }
 
-  const filteredTeams = teams.filter((t) => {
-    const matchesSearch =
-      !searchQuery ||
-      t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.authorName.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter =
-      activeFilters.length === 0 ||
-      activeFilters.some((f) => t.roles.includes(f));
-    return matchesSearch && matchesFilter;
-  });
+  const totalTeamPages = Math.max(1, Math.ceil(totalTeams / LIMIT));
+  const totalPeoplePages = Math.max(1, Math.ceil(totalPeople / LIMIT));
 
-  const filteredPeople = people.filter((p) => {
-    const matchesSearch =
-      !searchQuery ||
-      p.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter =
-      activeFilters.length === 0 ||
-      activeFilters.some((f) => p.roleTags.includes(f));
-    return matchesSearch && matchesFilter;
-  });
+  const handleTabChange = (tab: ActiveTab) => {
+    setActiveTab(tab);
+    setPage(1);
+  };
+
+  // Reset to page 1 when search query changes
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setPage(1);
+  };
 
   return (
     <div className="space-y-8 w-full">
@@ -95,7 +92,7 @@ export default function FindTeamPage() {
           <input
             type="text"
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Search teams or people..."
             className="w-full pl-12 pr-4 py-3 rounded-[1rem] border border-gray-200 bg-white text-gray-700 text-sm focus:outline-none focus:border-[#1b3168] shadow-sm placeholder:text-gray-400"
           />
@@ -139,7 +136,7 @@ export default function FindTeamPage() {
       <div className="flex justify-center w-full">
         <div className="flex bg-[#EAEAEA] rounded-xl p-1 shrink-0 w-full max-w-[280px]">
           {(["team", "people"] as const).map((tab) => (
-            <button key={tab} onClick={() => setActiveTab(tab)}
+            <button key={tab} onClick={() => handleTabChange(tab)}
               className={`flex-1 py-2.5 rounded-lg text-xs font-black tracking-widest transition-all ${activeTab === tab ? "bg-[#1b3168] text-white shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
               {tab.toUpperCase()}
             </button>
@@ -164,44 +161,91 @@ export default function FindTeamPage() {
             ))}
           </div>
         ) : activeTab === "team" ? (
-          filteredTeams.length > 0 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full items-start">
-              {filteredTeams.map((team) => (
-                <TeamCard
-                  key={team.id}
-                  data={{
-                    id: team.id,
-                    avatarUrl: team.avatarUrl,
-                    title: team.title,
-                    authorName: team.authorName,
-                    dateRange: team.dateRange,
-                    daysLeft: team.daysLeft,
-                    status: team.status,
-                    roles: team.roles,
-                    skills: team.skills,
-                    currentMembers: team.currentMemberCount,
-                    maxMembers: team.maxMembers,
-                    memberAvatars: team.memberAvatars,
-                    description: team.description,
-                    detailedMembers: team.detailedMembers,
-                    joinStatus: team.joinStatus,
-                    myRequestId: team.myRequestId,
-                  }}
-                  onRequest={() => setRequestTeam(team)}
-                  onCancel={() => team.myRequestId && handleCancel(team.id, team.myRequestId)}
-                />
-              ))}
+          teams.length > 0 ? (
+            <div className="flex flex-col gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full items-start">
+                {teams.map((team) => (
+                  <TeamCard
+                    key={team.id}
+                    data={{
+                      id: team.id,
+                      avatarUrl: team.avatarUrl,
+                      title: team.title,
+                      authorName: team.authorName,
+                      dateRange: team.dateRange,
+                      daysLeft: team.daysLeft,
+                      status: team.status,
+                      roles: team.roles,
+                      skills: team.skills,
+                      filledRoles: team.filledRoles,
+                      filledSkills: team.filledSkills,
+                      positions: team.positions,
+                      currentMembers: team.currentMemberCount,
+                      maxMembers: team.maxMembers,
+                      memberAvatars: team.memberAvatars,
+                      description: team.description,
+                      detailedMembers: team.detailedMembers,
+                      joinStatus: team.joinStatus,
+                      myRequestId: team.myRequestId,
+                    }}
+                    onRequest={() => setRequestTeam(team)}
+                    onCancel={() => team.myRequestId && handleCancel(team.id, team.myRequestId)}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center justify-between text-xs text-gray-400 px-1 mt-2">
+                <span>{totalTeams} ทีม</span>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setPage((p) => p - 1)}
+                    disabled={page <= 1}
+                    className="px-4 py-2 rounded-full border border-gray-200 text-[#1b3168] font-bold hover:bg-gray-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    ← ก่อนหน้า
+                  </button>
+                  <span className="px-3 font-bold text-[#1b3168]">{page} / {totalTeamPages}</span>
+                  <button
+                    onClick={() => setPage((p) => p + 1)}
+                    disabled={!hasNextTeams}
+                    className="px-4 py-2 rounded-full border border-gray-200 text-[#1b3168] font-bold hover:bg-gray-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  >
+                    ถัดไป →
+                  </button>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="text-center py-16 bg-white rounded-2xl border border-gray-200">
               <p className="text-gray-400 font-semibold text-sm">No teams match your filters</p>
             </div>
           )
-        ) : filteredPeople.length > 0 ? (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full items-start">
-            {filteredPeople.map((person) => (
-              <PersonCard key={person.id} data={person} />
-            ))}
+        ) : people.length > 0 ? (
+          <div className="flex flex-col gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full items-start">
+              {people.map((person) => (
+                <PersonCard key={person.id} data={person} />
+              ))}
+            </div>
+            <div className="flex items-center justify-between text-xs text-gray-400 px-1 mt-2">
+              <span>{totalPeople} คน</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setPage((p) => p - 1)}
+                  disabled={page <= 1}
+                  className="px-4 py-2 rounded-full border border-gray-200 text-[#1b3168] font-bold hover:bg-gray-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  ← ก่อนหน้า
+                </button>
+                <span className="px-3 font-bold text-[#1b3168]">{page} / {totalPeoplePages}</span>
+                <button
+                  onClick={() => setPage((p) => p + 1)}
+                  disabled={!hasNextPeople}
+                  className="px-4 py-2 rounded-full border border-gray-200 text-[#1b3168] font-bold hover:bg-gray-50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  ถัดไป →
+                </button>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="text-center py-16 bg-white rounded-2xl border border-gray-200">

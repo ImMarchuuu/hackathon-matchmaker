@@ -5,13 +5,6 @@ export interface RoleWithRank {
   rank_title: string;
 }
 
-const RANK_COLORS: Record<string, string> = {
-  Bronze:  "text-[#8B5A2B]",
-  Silver:  "text-[#9CA3AF]",
-  Gold:    "text-[#F59E0B]",
-  Diamond: "text-[#00BFFF]",
-};
-
 interface MyRoleSectionProps {
   roles?: RoleWithRank[];
 }
@@ -32,9 +25,6 @@ export default function MyRoleSection({ roles = [] }: MyRoleSectionProps) {
               <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-[3px] border-[#1b3168] flex items-center justify-center p-2 text-center text-[#1b3168] font-bold text-xs sm:text-sm shadow-sm bg-white">
                 {role.name}
               </div>
-              <span className={`text-xs font-bold ${RANK_COLORS[role.rank_title] ?? "text-gray-400"}`}>
-                {role.rank_title}
-              </span>
             </div>
           ))}
         </div>

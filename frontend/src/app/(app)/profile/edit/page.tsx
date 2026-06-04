@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "@/lib/api";
+import { notifyProfileUpdated } from "@/lib/profile-events";
 import type { ApiUser } from "@/types/profile";
 import Toast from "@/components/shared/Toast";
 
@@ -46,6 +47,7 @@ export default function EditProfilePage() {
     github: "",
     linkedin: "",
     roles: [],
+    display_roles: [],
   });
 
   useEffect(() => {
@@ -99,6 +101,7 @@ export default function EditProfilePage() {
       }
       const user: ApiUser = await res.json();
       setter(endpoint.includes("avatar") ? (user.avatar_url ?? "") : (user.cover_image ?? ""));
+      notifyProfileUpdated(); // refresh Header/Sidebar avatar immediately
       setToast({ message: "Image updated successfully", type: "success" });
     } catch {
       setToast({ message: "Network error — please try again", type: "error" });
@@ -124,6 +127,7 @@ export default function EditProfilePage() {
           display_roles: form.display_roles,
         }),
       });
+      notifyProfileUpdated(); // refresh Header/Sidebar name/avatar
       router.push("/profile");
     } finally {
       setSaving(false);
@@ -153,14 +157,16 @@ export default function EditProfilePage() {
         <div className="relative w-full">
           <div
             onClick={() => coverInputRef.current?.click()}
-            className="w-full aspect-[4/1] overflow-hidden relative bg-blue-100 rounded-none sm:rounded-t-[2rem] group cursor-pointer"
+            className="w-full aspect-[4/1] overflow-hidden relative bg-[#1b3168] rounded-none sm:rounded-t-[2rem] group cursor-pointer"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={coverUrl ?? "/cover-bg.png"}
-              alt="Cover"
-              className="w-full h-full object-cover object-center"
-            />
+            {coverUrl && (
+              <img
+                src={coverUrl}
+                alt="Cover"
+                className="w-full h-full object-cover object-center"
+              />
+            )}
             <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
               {uploadingCover
                 ? <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -177,7 +183,7 @@ export default function EditProfilePage() {
             <div className="w-28 h-28 rounded-full border-4 border-white overflow-hidden bg-white shadow-sm relative">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={avatarUrl ?? "/avatar.png"}
+                src={avatarUrl ?? "/profile.svg"}
                 alt="Avatar"
                 className="w-full h-full object-cover"
               />

@@ -27,14 +27,18 @@ async def create_team(
     return await team_service.create_team(db, current_user_id, payload)
 
 
-@router.get("", response_model=list[TeamResponse], summary="List teams")
+@router.get("", summary="List / search teams (paginated)")
 async def list_teams(
     status: Optional[str] = None,
     role: Optional[RoleName] = None,
+    q: Optional[str] = None,
+    page: int = 1,
+    limit: int = 20,
     db: AsyncIOMotorDatabase = Depends(db_dependency),
-) -> list[TeamResponse]:
-    """Return all teams, optionally filtered by status (WAITING / IN_PROGRESS) or required role."""
-    return await team_service.list_teams(db, status=status, role=role)
+) -> dict:
+    """Return paginated teams. Pass `q` for full-text search across title, description and skills."""
+    limit = min(limit, 100)
+    return await team_service.list_teams(db, status=status, role=role, q=q, page=page, limit=limit)
 
 
 @router.get("/{team_id}", response_model=TeamDetailResponse, summary="Get team detail")

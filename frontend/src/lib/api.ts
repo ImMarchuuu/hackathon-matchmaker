@@ -1,9 +1,35 @@
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-
 function getAuthToken(): string | null {
   if (typeof document === "undefined") return null;
   const match = document.cookie.match(/(?:^|;\s*)grandline_auth=([^;]+)/);
   return match ? decodeURIComponent(match[1]) : null;
+}
+
+/**
+ * Upload a single file via multipart/form-data.
+ * Do NOT set Content-Type manually — the browser adds the multipart boundary.
+ */
+export async function apiUpload<T>(path: string, file: File, field = "file"): Promise<T> {
+  const token = getAuthToken();
+  const form = new FormData();
+  form.append(field, file);
+
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(path, { method: "POST", body: form, headers });
+
+  let data: unknown = null;
+  if (res.status !== 204) {
+    const text = await res.text();
+    try { data = JSON.parse(text); } catch { data = { detail: text || `Request failed (${res.status})` }; }
+  }
+
+  if (!res.ok) {
+    const detail = (data as Record<string, unknown>)?.detail ?? `Request failed (${res.status})`;
+    throw new Error(Array.isArray(detail) ? (detail[0] as Record<string, unknown>)?.msg as string ?? String(detail) : String(detail));
+  }
+
+  return data as T;
 }
 
 export async function apiFetch<T>(
@@ -17,12 +43,19 @@ export async function apiFetch<T>(
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-  const data = res.status === 204 ? null : await res.json();
+  // Always use relative path — Next.js rewrite proxies /api/* to the backend.
+  // This keeps all browser requests same-origin and avoids CORS entirely.
+  const res = await fetch(path, { ...options, headers });
+
+  let data: unknown = null;
+  if (res.status !== 204) {
+    const text = await res.text();
+    try { data = JSON.parse(text); } catch { data = { detail: text || `Request failed (${res.status})` }; }
+  }
 
   if (!res.ok) {
-    const message = data?.detail ?? `Request failed (${res.status})`;
-    throw new Error(Array.isArray(message) ? message[0]?.msg ?? String(message) : String(message));
+    const detail = (data as Record<string, unknown>)?.detail ?? `Request failed (${res.status})`;
+    throw new Error(Array.isArray(detail) ? (detail[0] as Record<string, unknown>)?.msg as string ?? String(detail) : String(detail));
   }
 
   return data as T;

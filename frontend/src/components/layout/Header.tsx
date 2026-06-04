@@ -2,9 +2,18 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { apiFetch } from "@/lib/api";
+import { PROFILE_UPDATED_EVENT } from "@/lib/profile-events";
 import type { ApiUser } from "@/types/profile";
 import JoinRequestModal from "@/components/team/JoinRequestModal";
+
+const NAV_ITEMS = [
+  { href: "/find-team", label: "FIND TEAM" },
+  { href: "/skill-bank", label: "SKILL BANK" },
+  { href: "/active-teams", label: "ACTIVE TEAM" },
+  { href: "/saved", label: "SAVED" },
+];
 
 function ProfilePopup({ onClose, user }: { onClose: () => void; user: ApiUser | null }) {
   return (
@@ -13,7 +22,7 @@ function ProfilePopup({ onClose, user }: { onClose: () => void; user: ApiUser | 
       <div className="flex flex-col items-center gap-1">
         <div className="w-20 h-20 rounded-full border-4 border-white shadow-sm overflow-hidden bg-gray-50 shrink-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={user?.avatar_url ?? "/avatar.png"} alt={user?.name ?? "Profile"} className="w-full h-full object-cover" />
+          <img src={user?.avatar_url ?? "/profile.svg"} alt={user?.name ?? "Profile"} className="w-full h-full object-cover" />
         </div>
         <div className="text-center mt-2">
           <h4 className="text-[#1b3168] dark:text-blue-300 font-black text-xl leading-none">{user?.name ?? "—"}</h4>
@@ -196,13 +205,13 @@ function NotificationPopup({ onUnreadCount }: { onUnreadCount: (n: number) => vo
             return (
               <div key={notif.id} className={base}>
                 <div className="flex gap-3 items-start">
-                  <Link href={p.requester_id ? `/profile/${p.requester_id}` : "#"} className="shrink-0">
+                  <Link href={p.requester_id ? `/profile/${p.requester_username || p.requester_id}` : "#"} className="shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.requester_avatar ?? "/avatar.png"} alt="" className="w-10 h-10 rounded-full object-cover border border-blue-100 hover:opacity-80 transition-opacity" />
+                    <img src={p.requester_avatar ?? "/profile.svg"} alt="" className="w-10 h-10 rounded-full object-cover border border-blue-100 hover:opacity-80 transition-opacity" />
                   </Link>
                   <div className="flex flex-col min-w-0">
                     <p className="text-sm text-gray-700 leading-relaxed">
-                      <Link href={p.requester_id ? `/profile/${p.requester_id}` : "#"} className="font-bold text-[#1b3168] hover:underline">{p.requester_name}</Link>
+                      <Link href={p.requester_id ? `/profile/${p.requester_username || p.requester_id}` : "#"} className="font-bold text-[#1b3168] hover:underline">{p.requester_name}</Link>
                       {" "}ขอเข้าร่วมทีม{" "}
                       <Link href={p.team_id ? `/teams/${p.team_id}` : "#"} className="font-bold text-[#1b3168] hover:underline">{p.team_name}</Link>
                     </p>
@@ -428,7 +437,7 @@ function NotificationPopup({ onUnreadCount }: { onUnreadCount: (n: number) => vo
                 <div className="flex gap-3 items-start">
                   <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-200 shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.user_avatar ?? "/avatar.png"} alt="" className="w-full h-full object-cover" />
+                    <img src={p.user_avatar ?? "/profile.svg"} alt="" className="w-full h-full object-cover" />
                   </div>
                   <div className="flex flex-col gap-1 min-w-0">
                     <p className="text-sm text-gray-700 leading-relaxed">
@@ -477,12 +486,19 @@ export default function Header({ onMenuToggle }: { onMenuToggle?: () => void }) 
   const [unreadCount, setUnreadCount] = useState(0);
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
-    apiFetch<ApiUser>("/api/v1/users/me").then(setCurrentUser).catch(() => null);
+    const loadUser = () =>
+      apiFetch<ApiUser>("/api/v1/users/me").then(setCurrentUser).catch(() => null);
+    loadUser();
     apiFetch<import("@/types/notification").ApiNotification[]>("/api/v1/notifications")
       .then((data) => setUnreadCount(data.filter((n) => !n.read).length))
       .catch(() => null);
+
+    // Refresh the avatar/name when the profile is edited elsewhere.
+    window.addEventListener(PROFILE_UPDATED_EVENT, loadUser);
+    return () => window.removeEventListener(PROFILE_UPDATED_EVENT, loadUser);
   }, []);
 
   // Handle click outside to close popups
@@ -526,10 +542,21 @@ export default function Header({ onMenuToggle }: { onMenuToggle?: () => void }) 
         
         {/* Desktop Navigation */}
         <nav className="hidden lg:flex items-center gap-8">
-          <Link href="/find-team" className="text-white text-xs font-bold tracking-wider hover:text-white/80 transition-colors uppercase">FIND TEAM</Link>
-          <Link href="/skill-bank" className="text-white text-xs font-bold tracking-wider hover:text-white/80 transition-colors uppercase">SKILL BANK</Link>
-          <Link href="/active-teams" className="text-white text-xs font-bold tracking-wider hover:text-white/80 transition-colors uppercase">ACTIVE TEAM</Link>
-          <Link href="/saved" className="text-white text-xs font-bold tracking-wider hover:text-white/80 transition-colors uppercase">SAVED</Link>
+          {NAV_ITEMS.map(({ href, label }) => {
+            const active = pathname === href || pathname.startsWith(`${href}/`);
+            return (
+              <Link
+                key={href}
+                href={href}
+                aria-current={active ? "page" : undefined}
+                className={`text-xs font-bold tracking-wider uppercase transition-colors ${
+                  active ? "text-white" : "text-white/55 hover:text-white/90"
+                }`}
+              >
+                {label}
+              </Link>
+            );
+          })}
         </nav>
       </div>
 
@@ -562,7 +589,7 @@ export default function Header({ onMenuToggle }: { onMenuToggle?: () => void }) 
           aria-label="Go to profile"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={currentUser?.avatar_url ?? "/avatar.png"} alt="Profile" className="w-full h-full object-cover" />
+          <img src={currentUser?.avatar_url ?? "/profile.svg"} alt="Profile" className="w-full h-full object-cover" />
         </Link>
 
         {/* ── Desktop Avatar (Dropdown Popup) ── */}
@@ -574,7 +601,7 @@ export default function Header({ onMenuToggle }: { onMenuToggle?: () => void }) 
             aria-expanded={isProfileOpen}
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={currentUser?.avatar_url ?? "/avatar.png"} alt="Profile" className="w-full h-full object-cover" />
+            <img src={currentUser?.avatar_url ?? "/profile.svg"} alt="Profile" className="w-full h-full object-cover" />
           </button>
           
           {/* Profile Dropdown Popup */}

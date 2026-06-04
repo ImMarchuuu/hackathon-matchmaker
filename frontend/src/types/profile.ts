@@ -63,6 +63,7 @@ export interface ApiUser {
   skills: ApiSkillEntry[];
   portfolios: unknown[];
   display_roles: string[];
+  email_verified: boolean;
 }
 
 export interface CompetitionItem {

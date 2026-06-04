@@ -7,7 +7,10 @@ import MyRoleSection from "@/components/profile/MyRoleSection";
 import SkillRankSection from "@/components/profile/SkillRankSection";
 import CompetitionSection from "@/components/profile/CompetitionSection";
 import ActiveTeamSection from "@/components/profile/ActiveTeamSection";
+import ProfilePendingActionCard from "@/components/profile/ProfilePendingActionCard";
+import JoinRequestModal from "@/components/team/JoinRequestModal";
 import { apiFetch } from "@/lib/api";
+import type { ApiInvite } from "@/types/team";
 import type { ApiUser, ApiCompetitionExperience } from "@/types/profile";
 import type { ApiTeam } from "@/types/team";
 import type { ApiRankSummary } from "@/types/skill";
@@ -19,7 +22,6 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
 
   const [user, setUser] = useState<ApiUser | null>(null);
   const [me, setMe] = useState<ApiUser | null>(null);
-  const [allUsers, setAllUsers] = useState<ApiUser[]>([]);
   const [competitions, setCompetitions] = useState<ApiCompetitionExperience[]>([]);
 
   function handleCompetitionUpdated(updatedList: ApiCompetitionExperience[]) {
@@ -35,6 +37,17 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
   const [rankSummary, setRankSummary] = useState<ApiRankSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [missing, setMissing] = useState(false);
+
+  // pending join-request (leader sees on requester's profile)
+  const [pendingJoinRequest, setPendingJoinRequest] = useState<{
+    teamId: string; teamName: string; requestId: string; roles: string[]; skills: string[];
+  } | null>(null);
+  // pending invite (invitee sees on leader's profile)
+  const [pendingInvite, setPendingInvite] = useState<{
+    teamId: string; teamName: string; requiredRoles: string[]; requiredSkills: string[];
+  } | null>(null);
+  const [showAcceptModal, setShowAcceptModal] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   function fmt(d: string) {
     return new Date(d).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -73,20 +86,102 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
               }));
             mapped.sort((a, b) => a.daysLeft - b.daysLeft);
             setTeams(mapped);
+
+            // Detect pending invite: profile is leader, me is in invites[] with status pending
+            if (currentUser) {
+              const inviteTeam = apiTeams.find(
+                (t) =>
+                  t.leader_id === profile._id &&
+                  t.member_ids.length < t.max_members &&
+                  (t.invites ?? []).some(
+                    (i: ApiInvite) => i.user_id === currentUser._id && i.status === "pending"
+                  )
+              );
+              if (inviteTeam) {
+                setPendingInvite({
+                  teamId: inviteTeam._id,
+                  teamName: inviteTeam.title,
+                  requiredRoles: inviteTeam.required_roles ?? [],
+                  requiredSkills: inviteTeam.required_skills ?? [],
+                });
+              }
+            }
           })
           .catch(() => {});
+
+        // Detect pending join-request: me is leader, profile user sent a pending request, team not full
+        if (currentUser) {
+          apiFetch<ApiTeam[]>(`/api/v1/users/${currentUser._id}/teams`)
+            .then((myTeams) => {
+              for (const t of myTeams) {
+                if (t.leader_id !== currentUser._id) continue;
+                if (t.member_ids.length >= t.max_members) continue;
+                const req = t.join_requests.find(
+                  (r) => r.user_id === profile._id && r.status === "pending"
+                );
+                if (req) {
+                  setPendingJoinRequest({
+                    teamId: t._id,
+                    teamName: t.title,
+                    requestId: req.id,
+                    roles: req.roles ?? [],
+                    skills: req.skills ?? [],
+                  });
+                  break;
+                }
+              }
+            })
+            .catch(() => {});
+        }
 
         apiFetch<ApiRankSummary>(`/api/v1/users/${profile._id}/rank-summary`)
           .then(setRankSummary)
           .catch(() => {});
 
-        apiFetch<ApiUser[]>("/api/v1/users")
-          .then(setAllUsers)
-          .catch(() => {});
       })
       .catch(() => setMissing(true))
       .finally(() => setLoading(false));
   }, [username]);
+
+  async function handleJoinRequestAction(action: "approved" | "rejected") {
+    if (!pendingJoinRequest) return;
+    setActionLoading(true);
+    try {
+      await apiFetch(`/api/v1/teams/${pendingJoinRequest.teamId}/requests/${pendingJoinRequest.requestId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: action }),
+      });
+      setPendingJoinRequest(null);
+    } catch { /* silently fail */ } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleInviteDecline() {
+    if (!pendingInvite) return;
+    setActionLoading(true);
+    try {
+      await apiFetch(`/api/v1/teams/${pendingInvite.teamId}/invites/decline`, { method: "POST" });
+      setPendingInvite(null);
+    } catch { /* silently fail */ } finally {
+      setActionLoading(false);
+    }
+  }
+
+  async function handleInviteAccept(roles: string[], skills: string[]) {
+    if (!pendingInvite) return;
+    setActionLoading(true);
+    try {
+      await apiFetch(`/api/v1/teams/${pendingInvite.teamId}/invites/accept`, {
+        method: "POST",
+        body: JSON.stringify({ roles, skills }),
+      });
+      setPendingInvite(null);
+      setShowAcceptModal(false);
+    } catch { /* silently fail */ } finally {
+      setActionLoading(false);
+    }
+  }
 
   if (loading) {
     return (
@@ -125,14 +220,14 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
 
         {/* Section 1: Cover Photo + Avatar */}
         <section className="relative w-full" aria-label="Cover photo and avatar">
-          <div className="w-full aspect-[4/1] overflow-hidden relative bg-blue-100 rounded-none sm:rounded-t-[2rem]">
+          <div className="w-full aspect-[4/1] overflow-hidden relative bg-[#1b3168] rounded-none sm:rounded-t-[2rem]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={user.cover_image ?? "/cover-bg.png"} alt="Cover Photo" className="w-full h-full object-cover object-center" />
+            {user.cover_image && <img src={user.cover_image} alt="Cover Photo" className="w-full h-full object-cover object-center" />}
           </div>
           <div className="absolute -bottom-16 left-6 sm:left-12">
             <div className="w-32 h-32 rounded-full border-4 border-white overflow-hidden bg-white shadow-sm shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={user.avatar_url ?? "/avatar.png"} alt="Profile Picture" className="w-full h-full object-cover" />
+              <img src={user.avatar_url ?? "/profile.svg"} alt="Profile Picture" className="w-full h-full object-cover" />
             </div>
           </div>
         </section>
@@ -163,6 +258,25 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
                 </span>
                 @{user.username}
               </p>
+
+              {/* Behavior Score */}
+              {user.behavioral_rates > 0 && (
+                <div className="flex items-center gap-2 mt-2">
+                  <div className="flex items-center gap-0.5">
+                    {Array.from({ length: 5 }).map((_, i) => {
+                      const filled = user.behavioral_rates >= i + 1;
+                      const half = !filled && user.behavioral_rates >= i + 0.5;
+                      return (
+                        <svg key={i} className={`w-4 h-4 ${filled ? "text-amber-400" : half ? "text-amber-300" : "text-gray-200"}`} fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                        </svg>
+                      );
+                    })}
+                  </div>
+                  <span className="text-sm font-extrabold text-[#233876]">{user.behavioral_rates.toFixed(1)}</span>
+                  <span className="text-xs font-semibold text-gray-400">Behavior Score</span>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-3 pt-1">
@@ -193,6 +307,41 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
               </p>
             </div>
           </section>
+
+          {/* Pending action cards — visible only to the relevant party */}
+          {!isCurrentUser && pendingJoinRequest && (
+            <ProfilePendingActionCard
+              type="join_request"
+              teamName={pendingJoinRequest.teamName}
+              roles={pendingJoinRequest.roles}
+              skills={pendingJoinRequest.skills}
+              loading={actionLoading}
+              onAccept={() => handleJoinRequestAction("approved")}
+              onDecline={() => handleJoinRequestAction("rejected")}
+            />
+          )}
+          {!isCurrentUser && pendingInvite && (
+            <ProfilePendingActionCard
+              type="team_invite"
+              teamName={pendingInvite.teamName}
+              inviteRoles={pendingInvite.requiredRoles}
+              loading={actionLoading}
+              onAccept={() => setShowAcceptModal(true)}
+              onDecline={handleInviteDecline}
+            />
+          )}
+          {showAcceptModal && pendingInvite && (
+            <JoinRequestModal
+              teamTitle={pendingInvite.teamName}
+              availableRoles={pendingInvite.requiredRoles}
+              availableSkills={pendingInvite.requiredSkills}
+              title="ยืนยันการเข้าร่วมทีม"
+              submitLabel="ยืนยันเข้าร่วม"
+              saving={actionLoading}
+              onClose={() => setShowAcceptModal(false)}
+              onSubmit={handleInviteAccept}
+            />
+          )}
 
           {/* Section 4 & 5: Details & Contact */}
           <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-8 px-6 sm:px-12">
@@ -229,19 +378,33 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
                   {user.email}
                 </li>
                 {user.github && (
-                  <li className="flex items-center gap-3 text-[#233876] font-semibold text-sm hover:underline cursor-pointer">
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.372.79 1.102.79 2.222v3.293c0 .319.23.57.75.576 4.765-1.589 8.195-6.086 8.195-11.386 0-6.627-5.373-12-12-12" />
-                    </svg>
-                    {user.github}
+                  <li>
+                    <a
+                      href={user.github.startsWith("http") ? user.github : `https://${user.github}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 text-[#233876] font-semibold text-sm hover:underline"
+                    >
+                      <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.372.79 1.102.79 2.222v3.293c0 .319.23.57.75.576 4.765-1.589 8.195-6.086 8.195-11.386 0-6.627-5.373-12-12-12" />
+                      </svg>
+                      {user.github}
+                    </a>
                   </li>
                 )}
                 {user.linkedin && (
-                  <li className="flex items-center gap-3 text-[#233876] font-semibold text-sm hover:underline cursor-pointer">
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
-                    </svg>
-                    {user.linkedin}
+                  <li>
+                    <a
+                      href={user.linkedin.startsWith("http") ? user.linkedin : `https://${user.linkedin}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 text-[#233876] font-semibold text-sm hover:underline"
+                    >
+                      <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
+                      </svg>
+                      {user.linkedin}
+                    </a>
                   </li>
                 )}
               </ul>
@@ -252,7 +415,6 @@ export default function DynamicProfilePage({ params }: { params: { id: string } 
           <div className="w-full pt-8 border-t border-gray-100">
             <CompetitionSection
               competitions={competitions}
-              allUsers={allUsers}
               isCurrentUser={isCurrentUser}
               onUpdated={handleCompetitionUpdated}
             />
