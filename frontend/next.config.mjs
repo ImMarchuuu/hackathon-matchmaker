@@ -5,11 +5,12 @@ const pwa = withPWA({
   cacheOnFrontEndNav: true,
   aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
-  // SW only on real production: off for local dev and Vercel preview deploys,
-  // so previews always serve fresh code without a service worker masking it.
-  disable:
-    process.env.NODE_ENV === "development" ||
-    process.env.VERCEL_ENV === "preview",
+  // Service worker is OPT-IN: it only activates when NEXT_PUBLIC_ENABLE_PWA is
+  // explicitly "true". Set that ONLY in the Vercel production environment.
+  // Everywhere else — local dev and every preview — there is no SW, so fresh
+  // code is never masked by a stale cache. This is self-controlled and does not
+  // depend on Vercel auto-exposing system vars like VERCEL_ENV.
+  disable: process.env.NEXT_PUBLIC_ENABLE_PWA !== "true",
   workboxOptions: {
     disableDevLogs: true,
     // New SW takes control immediately and purges precaches from older builds,
